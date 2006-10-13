@@ -1,8 +1,10 @@
 $Id$
 
-This is top-level directory in my SVN repository.
+This is top-level directory of mloskot's Subversion repository.
 Repository structure:
 
-/todo/
+*TODO*
 
-Contact: Mateusz Loskot <mateusz@loskot.net>
+
+-- 
+Mateusz Loskot <mateusz@loskot.net>
