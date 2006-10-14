@@ -1,4 +1,4 @@
-dnl $Id: ax_postgresql.m4 31 2006-10-12 16:38:54Z mloskot $
+dnl $Id$
 dnl
 dnl @synopsis AX_LIB_POSTGRESQL([MINIMUM-VERSION])
 dnl
@@ -28,10 +28,10 @@ dnl
 dnl @category InstalledPackages
 dnl @category Cxx
 dnl @author Mateusz Loskot <mateusz@loskot.net>
-dnl @version $Date: 2006-10-12 18:38:54 +0200 (Thu, 12 Oct 2006) $
+dnl @version $Date$
 dnl @license AllPermissive
 dnl
-dnl $Id: ax_postgresql.m4 31 2006-10-12 16:38:54Z mloskot $
+dnl $Id$
 dnl
 AC_DEFUN([AX_LIB_POSTGRESQL],
 [
