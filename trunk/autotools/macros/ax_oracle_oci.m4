@@ -43,8 +43,22 @@ AC_DEFUN([AX_LIB_ORACLE_OCI],
         AC_HELP_STRING([--with-oracle=@<:@DIR@:>@],
             [use Oracle OCI API from given path to Oracle home directory]
         ),
-        [oracle_home_dir="$withval"],
-        [oracle_home_dir=""]
+        [
+        if test "$withval" = "yes"; then
+            if test -n "$ORACLE_HOME"; then
+                oracle_home_dir="$ORACLE_HOME"
+            else
+                oracle_home_dir=""
+            fi 
+        fi
+        ],
+        [
+        if test -n "$ORACLE_HOME"; then
+            oracle_home_dir="$ORACLE_HOME"
+        else
+            oracle_home_dir=""
+        fi 
+        ]
     )
 
     AC_ARG_WITH([oracle-include],
@@ -123,8 +137,13 @@ Please, locate Oracle directories using --with-oracle or \
         AC_COMPILE_IFELSE([
             AC_LANG_PROGRAM([[@%:@include <oci.h>]],
                 [[
-#if defined(OCI_MAJOR_VERSION) && defined(OCI_MINOR_VERSION)
-// Everything is okay
+#if defined(OCI_MAJOR_VERSION)
+#if OCI_MAJOR_VERSION == 10 && OCI_MINOR_VERSION == 2
+// Oracle 10.2 detected
+#endif
+#elif defined(OCI_V7_SYNTAX)
+// OK, older Oracle detected
+// TODO - mloskot: find better macro to check for older versions; 
 #else
 #  error Oracle oci.h header not found
 #endif
@@ -178,46 +197,51 @@ if (envh) OCIHandleFree(envh, OCI_HTYPE_ENV);
     dnl
     dnl Check required version of Oracle is available
     dnl
-    oracle_version_major=`cat $oracle_include_dir/oci.h \
-                         | grep '#define.*OCI_MAJOR_VERSION.*' \
-                         | sed -e 's/#define OCI_MAJOR_VERSION  *//' \
-                         | sed -e 's/  *\/\*.*\*\///'`
-
-    oracle_version_minor=`cat $oracle_include_dir/oci.h \
-                         | grep '#define.*OCI_MINOR_VERSION.*' \
-                         | sed -e 's/#define OCI_MINOR_VERSION  *//' \
-                         | sed -e 's/  *\/\*.*\*\///'`
-
-    ORACLE_OCI_VERSION="$oracle_version_major.$oracle_version_minor"
-
     oracle_version_req=ifelse([$1], [], [], [$1])
 
-    if test "$oci_header_found" = "yes" -a \
-            "$oci_lib_found" = "yes" -a \
-            -n "$oracle_version_req"; then
+    if test "$oci_header_found" = "yes" -a "$oci_lib_found" = "yes" -a \
+        -n "$oracle_version_req"; then
+
+        oracle_version_major=`cat $oracle_include_dir/oci.h \
+                             | grep '#define.*OCI_MAJOR_VERSION.*' \
+                             | sed -e 's/#define OCI_MAJOR_VERSION  *//' \
+                             | sed -e 's/  *\/\*.*\*\///'`
+
+        oracle_version_minor=`cat $oracle_include_dir/oci.h \
+                             | grep '#define.*OCI_MINOR_VERSION.*' \
+                             | sed -e 's/#define OCI_MINOR_VERSION  *//' \
+                             | sed -e 's/  *\/\*.*\*\///'`
 
         AC_MSG_CHECKING([if Oracle OCI version is >= $oracle_version_req])
 
-        dnl Decompose required version string of Oracle
-        dnl and calculate its number representation
-        oracle_version_req_major=`expr $oracle_version_req : '\([[0-9]]*\)'`
-        oracle_version_req_minor=`expr $oracle_version_req : '[[0-9]]*\.\([[0-9]]*\)'`
+        if test -n "$oracle_version_major" -a -n $"oracle_version_minor"; then
 
-        oracle_version_req_number=`expr $oracle_version_req_major \* 1000000 \
-                                   \+ $oracle_version_req_minor \* 1000`
+            ORACLE_OCI_VERSION="$oracle_version_major.$oracle_version_minor"
 
-        dnl Calculate its number representation 
-        oracle_version_number=`expr $oracle_version_major \* 1000000 \
-                              \+ $oracle_version_minor \* 1000`
+            dnl Decompose required version string of Oracle
+            dnl and calculate its number representation
+            oracle_version_req_major=`expr $oracle_version_req : '\([[0-9]]*\)'`
+            oracle_version_req_minor=`expr $oracle_version_req : '[[0-9]]*\.\([[0-9]]*\)'`
 
-        oracle_version_check=`expr $oracle_version_number \>\= $oracle_version_req_number`
-        if test "$oracle_version_check" = "1"; then
-            AC_MSG_RESULT([yes])
+            oracle_version_req_number=`expr $oracle_version_req_major \* 1000000 \
+                                       \+ $oracle_version_req_minor \* 1000`
+
+            dnl Calculate its number representation 
+            oracle_version_number=`expr $oracle_version_major \* 1000000 \
+                                  \+ $oracle_version_minor \* 1000`
+
+            oracle_version_check=`expr $oracle_version_number \>\= $oracle_version_req_number`
+            if test "$oracle_version_check" = "1"; then
+                AC_MSG_RESULT([yes])
+            else
+                AC_MSG_RESULT([no])
+                AC_MSG_ERROR([Oracle $ORACLE_OCI_VERSION found, but required version is $oracle_version_req])
+            fi
         else
+            ORACLE_OCI_VERSION="UNKNOWN"
             AC_MSG_RESULT([no])
-            AC_MSG_ERROR([Oracle $ORACLE_OCI_VERSION found, but required version is $oracle_version_req])
+            AC_MSG_WARN([Oracle version unknown, probably OCI older than 10.2 is available])
         fi
-
     fi
 
     AC_SUBST([ORACLE_OCI_VERSION])
