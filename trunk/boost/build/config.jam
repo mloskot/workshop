@@ -3,6 +3,7 @@
 # Copyright 2006 Jorge Suit Perez Ronda
 #
 # Distributed under <TODO> License 
+#
 
 # Boost.Build configuration module provides rules to
 # manage GNU Autoconf-like options.
