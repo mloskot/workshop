@@ -1,0 +1,133 @@
+# $Id$
+#
+# Copyright 2006 Jorge Suit Perez Ronda
+#
+# Distributed under <TODO> License 
+
+# Boost.Build configuration module provides rules to
+# manage GNU Autoconf-like options.
+module config
+{
+import path ;
+
+# configure
+#
+# Generates configuration option for given package.
+rule configure ( pkg : prefix ? : incls ? : libs ? )
+{
+    ECHO configuring package $(pkg) ;
+    all-pkgs += $(pkg) ;
+
+    if $(incls)
+    {
+        --with-$(pkg)-incls = $(incls) ;
+    }
+    if $(libs)
+    {
+        --with-$(pkg)-libs = $(libs) ;
+    }
+    if $(prefix)
+    {
+        --with-$(pkg)-incls ?= [ path.join $(prefix) include ] ;
+        --with-$(pkg)-libs ?= [ path.join $(prefix) lib ] ;
+    }
+}
+local export-rules = configure ;
+
+# is-configured
+#
+# Checks if requeted package has been configured.
+rule is-configured ( pkg )
+{
+    if $(pkg) in $(all-pkgs)
+    {
+        return yes ;
+    }
+}
+export-rules += is-configured ;
+
+# inc-path
+#
+# Generates <include> attribute for a package.
+rule inc-path ( pkg ? )
+{
+    if $(pkg)
+    {
+        if $(--with-$(pkg)-incls)
+        {
+            return <include>$(--with-$(pkg)-incls) ;
+        }
+    }
+    else
+    {
+        local incls ;
+        for local p in $(all-pkgs)
+        {
+            incls += <include>$(--with-$(p)-incls) ;
+        }
+        return $(incls) ;
+    }
+}
+export-rules += inc-path ;
+
+# lib-path
+#
+# Generates <search> attribute for a package.
+rule lib-path ( pkg )
+{
+    if $(--with-$(pkg)-libs)
+    {
+        return <search>$(--with-$(pkg)-libs) ;
+    }
+}
+export-rules += lib-path ;
+
+# enable
+#
+# Enables requested feature as enabled
+rule enable ( feature : define ? )
+{
+    all-enabled += $(feature) ;
+    if $(define)
+    {
+        enable-$(feature)-define = $(define) ;
+    }
+   else
+    {
+        enable-$(feature)-define = _USE_$(feature)_ ;
+    }
+}
+export-rules += enable ;
+
+# is-enabled
+#
+# Checks if requested feature has been enabled.
+rule is-enabled ( feature )
+{
+    return $(enable-$(feature)-define) ;
+}
+export-rules += is-enabled ;
+
+# define-enabled
+#
+# Generates <define> attributes for all enabled features.
+rule define-enabled ( )
+{
+    local defines ;
+    for local f in $(all-enabled)
+    {
+        defines += <define>$(enable-$(f)-define) ;
+    }
+    return $(defines) ;
+}
+export-rules += define-enabled ;
+
+# Export all rules from the module
+for local r in $(export-rules)
+{
+    EXPORT config : $(r) ;
+    IMPORT config : $(r) : : $(r) ;
+}
+
+}
+# module config 
