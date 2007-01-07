@@ -1,0 +1,43 @@
+import config ;
+
+if [ config.is-enabled dbdrivers ]
+{
+  local odbc-support ;
+  if [ config.is-configured unixodbc ]
+  {
+    local odbc_inc = [ config.include-feature unixodbc ] ;
+    lib odbc : : <name>odbc [ config.search-feature unixodbc ] ;
+    odbc-support = yes ;
+  }
+  else if [ config.is-configured iodbc ]
+  {
+    local odbc_inc = [ config.include-feature iodbc ] ;
+    lib odbc : : <name>iodbc [ config.search-feature iodbc ] ;
+    odbc-support = yes ;
+  }
+  if $(odbc-support) = yes 
+  {
+    lib tolodbc 
+        : libtolodbc.c odbc
+        : $(odbc_inc)
+        ;
+  }
+
+  if [ config.is-configured mysql ]
+  {
+    lib mysql : : <name>mysqlclient [ config.search-feature mysql ] ;
+    lib tolmysql
+        : libtolmysql.c mysql
+        : [ config.include-feature mysql ]
+        ;
+  }
+
+  if [ config.is-configured pgsql ] 
+  {
+    lib pgsql : : <name>pq [ config.search-feature pgsql ] ;
+    lib tolpgsql
+        : libtolpgsql.c pgsql
+        : [ config.include-feature pgsql ]
+        ;
+  }
+}

@@ -1,0 +1,142 @@
+import path ;
+import modules ;
+import os ;
+import option ;
+import property ;
+import package ;
+import config ;
+
+# ECHO ARGV [ modules.peek : ARGV ] ;
+
+path-constant TOP : . ;
+
+local os ;
+if [ modules.peek : UNIX ]
+{ 
+  os = UNIX ;
+}
+else 
+{ 
+  os ?= [ os.name ] ; 
+}
+
+if $(os) = UNIX
+{
+  os-reqs = <define>UNIX ;
+}
+
+include [ path.join $(TOP) prj-config.jam  ] ;
+
+project tol
+  : requirements <toolset>gcc:<cxxflags>-fno-strict-aliasing
+                 <include>.
+                 <include>$(TOP)
+                 [ config.include-feature ]
+                 $(os-reqs)
+                 <define>HAVE_CONFIG_H
+                 <define>__USE_OIS__
+                 <define>USE_DELAY_INIT
+                 <define>__USE_DYNSCOPE__
+  ;
+
+rule obj-req ( properties * )
+{
+}
+
+rule objects ( name : sources + : requirements * )
+{
+  local t_list = ;
+  for o in $(sources)
+  {
+    local t =  $(o:B) ;
+    obj $(t) 
+      : $(o)
+      : <conditional>@obj-req $(requirements) ;
+      t_list += $(t) ;
+  }
+  alias $(name) : $(t_list) ;
+}
+
+rule ln-H ( h_list + )
+{
+  local cwd = [ PWD ] ;
+  local caller = [ CALLER_MODULE ] ;
+  # echo caller is $(caller) ;
+  local caller-location = [ modules.binding $(caller) ] ; 
+  caller-location = $(caller-location:D) ;
+  # echo cl is $(caller-location) ;
+  caller-location = [ path.root $(caller-location) $(cwd) ] ;
+  for h in $(h_list)
+  {
+    h-location = [ path.root $(h) $(caller-location) ] ;
+    local n = $(h:B)$(h:S) ;
+    make $(TOP)/tol/$(n) : $(h-location) : @myln ;
+  }
+}
+
+rule myln 
+{
+}
+
+actions myln
+{
+  ln -s -f $(>) $(<) ;
+}
+
+ln-H [ glob *.h ] ;
+
+#local subdirs = bbasic bmath bparser btol contrib dbdrivers initLibrary 
+#                lang OIS
+
+local subdirs = bbasic bmath bparser btol contrib lang OIS ;
+local all-obj-aliases ;
+for dir in $(subdirs)
+{
+  build-project $(dir) ;
+  all-obj-aliases += $(dir)//objs ;
+}
+
+local config-prefix = [ config.get-prefix tol ] ;
+local libdir = [ config.get-libdir tol ] ;
+local initlib-location = [ path.join $(libdir) initLibrary ] ;
+
+ECHO initlib-location es $(initlib-location) ;
+
+obj init : init.cpp : <define>TOLINIT_LIB_DIR=\\\"$(initlib-location)\\\" ;
+
+lib gsl      : : [ config.search-feature gsl ] ;
+lib gslcblas : : [ config.search-feature gsl ] ;
+lib cholmod  : : [ config.search-feature cholmod ] ;
+lib bz2      : : [ config.search-feature bz2 ] ;
+
+lib tol : init $(all-obj-aliases) cholmod gsl gslcblas bz2
+        : <use>cholmod
+        :
+        : <library>cholmod
+        ;
+
+build-project dbdrivers ;
+
+exe tolcon : tol.cpp tol ;
+
+package.install install-tol
+    : # requirements
+      <install-default-prefix>$(config-prefix)
+      <install-header-subdir>tol
+      <dll-path>$(libdir) [ config.hardcode-dll-paths ]
+    : # binaries
+      tolcon
+    : # libraries
+      tol dbdrivers
+    : # headers
+      [ glob tol/*.h tol/*.hpp ]
+    ;
+
+install install-initlib
+      : [ path.glob-tree initLibrary : *.tol *.tcl *.bst *.txt : CVS ]
+      : <install-source-root>initLibrary <location>$(initlib-location) ;
+
+explicit install-initlib ;
+
+alias install : install-initlib install-tol ;
+explicit install ;

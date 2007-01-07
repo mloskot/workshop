@@ -1,0 +1,7 @@
+configure lib : gsl ;
+configure lib : cholmod : /usr/local/cholmod ;
+configure lib : unixodbc ;
+configure lib : mysql : : /usr/include/mysql ;
+configure lib : bz2 ;
+configure enable : dbdrivers ;
+configure prefix : /usr/local/tol ;

@@ -1,113 +1,151 @@
 # $Id$
 #
-# Copyright 2006 Jorge Suit Perez Ronda
-#
+# Copyright 2006 Jorge Suit Perez Ronda <josp.jorge@gmail.com>
+# Copyright 2006 Mateusz Loskot <mateusz@loskot.net>
+
 # Distributed under <TODO> License 
 #
 
 # Boost.Build configuration module provides rules to
 # manage GNU Autoconf-like options.
-module config
-{
-import path ;
+
+import modules path feature ;
 
 # configure
 #
+# rule to configure packages and enables. It is a dispatching routine
+# First argument is what to configure: lib or enable
+# Rest of arguments depende on what is being configured.
+# Example:
+#
+#   configure lib    : gsl : /usr/local/gsl ;
+#   configure enable : dbase ;
+rule configure 
+{
+    $(1) $(2) : $(3) : $(4) : $(5) : $(6) ;
+}
+
+# lib
+#
 # Generates configuration option for given package.
-rule configure ( pkg : prefix ? : incls ? : libs ? )
+rule lib ( pkg : prefix ? : incls ? : libs ? )
 {
     ECHO configuring package $(pkg) ;
-    all-pkgs += $(pkg) ;
-
+    .all.pkgs += $(pkg) ;
     if $(incls)
     {
-        --with-$(pkg)-incls = $(incls) ;
+        .with.$(pkg).incls = $(incls) ;
     }
     if $(libs)
     {
-        --with-$(pkg)-libs = $(libs) ;
+        .with.$(pkg).libs = $(libs) ;
     }
-    if $(prefix)
+    if $(prefix) 
     {
-        --with-$(pkg)-incls ?= [ path.join $(prefix) include ] ;
-        --with-$(pkg)-libs ?= [ path.join $(prefix) lib ] ;
+        .with.$(pkg).incls ?= [ path.join $(prefix) include ] ;
+        .with.$(pkg).libs  ?= [ path.join $(prefix) lib ] ;
     }
-}
-local export-rules = configure ;
+ }
 
 # is-configured
 #
 # Checks if requeted package has been configured.
 rule is-configured ( pkg )
 {
-    if $(pkg) in $(all-pkgs)
+    if $(pkg) in $(.all.pkgs)
     {
         return yes ;
     }
 }
-export-rules += is-configured ;
 
-# inc-path
+# include-feature
 #
-# Generates <include> attribute for a package.
-rule inc-path ( pkg ? )
+# Generates <include> attribute for a package. If pkg is ommited
+# all <include> features configured are returned.
+rule include-feature ( pkg ? )
 {
-    if $(pkg)
+    if $(pkg) 
     {
-        if $(--with-$(pkg)-incls)
+        if $(.with.$(pkg).incls)
         {
-            return <include>$(--with-$(pkg)-incls) ;
+            return <include>$(.with.$(pkg).incls) ;
         }
-    }
-    else
+    } 
+    else 
     {
         local incls ;
-        for local p in $(all-pkgs)
+        for local p in $(.all.pkgs)
         {
-            incls += <include>$(--with-$(p)-incls) ;
+            if $(.with.$(p).incls)
+            {
+                incls += <include>$(.with.$(p).incls) ;
+            }
         }
         return $(incls) ;
     }
 }
-export-rules += inc-path ;
 
-# lib-path
+# search-feature
 #
-# Generates <search> attribute for a package.
-rule lib-path ( pkg )
+# Generates <search> feature for a package.
+rule search-feature ( pkg )
 {
-    if $(--with-$(pkg)-libs)
+    if $(.with.$(pkg).libs)
     {
-        return <search>$(--with-$(pkg)-libs) ;
+        return <search>$(.with.$(pkg).libs) ;
+    }  
+}
+
+# hardcode-dll-paths
+#
+# generate the list of <dll-path> features for all packages with
+# <search> defined.
+rule hardcode-dll-paths ( pkg ? )
+{
+    if $(pkg)
+    {
+        if $(.with.$(pkg).libs)
+        {
+            return <dll-path>$(.with.$(pkg).libs) ;
+        }  
+    }
+    else
+    {
+        local props ;
+        for local p in $(.all.pkgs)
+        {
+            if $(.with.$(p).libs)
+            {
+                props += <dll-path>$(.with.$(p).libs) ;
+            }
+        }
+        return $(props) ;      
     }
 }
-export-rules += lib-path ;
 
 # enable
 #
-# Enables requested feature as enabled
+# Enables requested feature as enabled.
 rule enable ( feature : define ? )
 {
-    all-enabled += $(feature) ;
+    .all.enabled += $(feature) ;
     if $(define)
     {
-        enable-$(feature)-define = $(define) ;
+        .enable.$(feature).define = $(define) ;
     }
-   else
+    else
     {
-        enable-$(feature)-define = _USE_$(feature)_ ;
+        .enable.$(feature).define = _USE_$(feature:U)_ ;
     }
 }
-export-rules += enable ;
 
 # is-enabled
 #
 # Checks if requested feature has been enabled.
 rule is-enabled ( feature )
 {
-    return $(enable-$(feature)-define) ;
+    return $(.enable.$(feature).define) ;
 }
-export-rules += is-enabled ;
 
 # define-enabled
 #
@@ -115,20 +153,69 @@ export-rules += is-enabled ;
 rule define-enabled ( )
 {
     local defines ;
-    for local f in $(all-enabled)
+    for local f in $(.all.enabled)
     {
-        defines += <define>$(enable-$(f)-define) ;
+        defines += <define>$(.enable.$(f).define) ;
     }
     return $(defines) ;
 }
-export-rules += define-enabled ;
 
-# Export all rules from the module
-for local r in $(export-rules)
+# prefix
+#
+# Configure a default prefix to be used when installing.
+# 
+# tag argument does not work well, it is suppose to be used in
+# get-prefix when computing dynamic prefix but package.install does
+# not handle <conditional> as a main target.
+rule prefix ( prefix : tag ? )
 {
-    EXPORT config : $(r) ;
-    IMPORT config : $(r) : : $(r) ;
+    .prefix = [ path.make $(prefix) ] ;
+    .prefix.tag = $(tag) ;
+    ECHO configuring prefix to $(.prefix) ;
 }
 
+# get-prefix
+#
+# Return the default prefix to be used when installing. Command line
+# option --prefix is handled.
+#
+# If configure.prefix was not used a default prefix is build (the same
+# as package.install
+rule get-prefix ( name : properties * )
+{
+    local prefix = $(.prefix) ;
+    if ! $(prefix)
+    {
+        if [ modules.peek : NT ] { prefix = C:\\$(name) ; }
+        else if [ modules.peek : UNIX ] { prefix = /usr/local ; }        
+    }
+    # overwrite with --prefix if it was given
+    prefix = [ option.get prefix : $(prefix) ] ;
+    if $(.prefix.tag)
+    {
+        local tool = [ feature.get-values <toolset> : $(properties) ] ;
+        local dbg = [ feature.get-values <debug-symbols> : $(properties) ] ;
+        if $(dbg) = "on"
+        {
+            prefix = $(prefix)-$(tool)-debug ;
+        }
+        else
+        {
+            prefix = $(prefix)-$(tool)-release ;
+        }
+    }
+    return $(prefix) ;
 }
-# module config 
+
+# get-libdir
+#
+# return the default prefix for installing libs. Command line option
+# --libdir is handled. 
+rule get-libdir ( name : properties * )
+{
+    local prefix = [ get-prefix $(name) : $(properties) ] ;
+
+    return [ option.get libdir : $(prefix)/lib ] ;
+}
+
+IMPORT config : configure : : configure ;
