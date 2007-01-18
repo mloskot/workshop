@@ -136,6 +136,8 @@ Please, locate Oracle directories using --with-oracle or \
             CPPFLAGS="$CPPFLAGS -I$oracle_include_dir2"
         fi
 
+        dnl Depending on later Oracle version detection,
+        dnl -lnnz10 flag might be removed for older Oracle < 10.x
         saved_LDFLAGS="$LDFLAGS"
         oci_ldflags="-L$oracle_lib_dir -lclntsh -lnnz10"
         LDFLAGS="$LDFLAGS $oci_ldflags"
