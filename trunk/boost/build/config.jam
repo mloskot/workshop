@@ -30,8 +30,15 @@ rule configure
 # Generates configuration option for given package.
 rule lib ( pkg : prefix ? : incls ? : libs ? )
 {
-    ECHO configuring package $(pkg) ;
-    .all.pkgs += $(pkg) ;
+    if $(pkg) in $(.all.pkgs)
+    {
+        ECHO reconfiguring package $(pkg) ;
+    }
+    else
+    {
+        ECHO configuring package $(pkg) ;
+       .all.pkgs += $(pkg) ;
+    }
     if $(incls)
     {
         .with.$(pkg).incls = $(incls) ;
@@ -125,17 +132,26 @@ rule hardcode-dll-paths ( pkg ? )
 
 # enable
 #
-# Enables requested feature as enabled.
+# Enables requested feature as enabled.  All possible features are by
+# default disabled: this may be not desirable. A better approach?
+#
 rule enable ( feature : define ? )
 {
-    .all.enabled += $(feature) ;
-    if $(define)
+    if $(feature) in $(.all.enabled)
     {
-        .enable.$(feature).define = $(define) ;
+        ECHO feature $(feature) already enabled ;
     }
     else
     {
-        .enable.$(feature).define = _USE_$(feature:U)_ ;
+        .all.enabled += $(feature) ;
+        if $(define)
+        {
+            .enable.$(feature).define = $(define) ;
+        }
+        else
+        {
+            .enable.$(feature).define = _USE_$(feature:U)_ ;
+        }
     }
 }
 
@@ -169,6 +185,10 @@ rule define-enabled ( )
 # not handle <conditional> as a main target.
 rule prefix ( prefix : tag ? )
 {
+    if $(.prefix)
+    {
+        ECHO discarging previous prefix $(.prefix) ;
+    }
     .prefix = [ path.make $(prefix) ] ;
     .prefix.tag = $(tag) ;
     ECHO configuring prefix to $(.prefix) ;
@@ -216,6 +236,135 @@ rule get-libdir ( name : properties * )
     local prefix = [ get-prefix $(name) : $(properties) ] ;
 
     return [ option.get libdir : $(prefix)/lib ] ;
+}
+
+# read
+#
+# read the given configuration file if it is given. After that the
+# command line options are processed. Some of the config options given in file
+# can be overwritten this way.
+# 
+#  --with-PKG=
+#  --with-PKG-includes=
+#  --with-PKG-libraries=
+#  --enable-FEATURE
+#  --prefix=
+rule read ( file ? )
+{
+    if $(file)
+    {
+        if [ path.exists $(file) ]
+        {
+            include $(file) ;
+        }
+        else
+        {
+            ECHO configuration file $(file) does not exist ;
+        }
+    }
+    # now process command line arguments
+    cmdline ;
+}
+
+local rule trim-left-nulls ( list * )
+{
+    local _list ;
+
+    for local i in $(list)
+    {
+        if $(i)
+        {
+            _list += $(i) ;
+        }
+    }
+    return $(_list) ;
+}
+
+local cmdl_all_pkgs ;
+local cmdl_all_enabled ;
+
+# cmdline
+#
+# command line option processing. See rule read.
+#
+#  --with-PKG=
+#  --with-PKG-includes=
+#  --with-PKG-libraries=
+#  --enable-FEATURE
+#  --prefix=
+#
+rule cmdline ( options * )
+{
+    if $(options)
+    {
+        list_opts = $(options) ;
+    }
+    else
+    {
+        list_opts = [ modules.peek : ARGV ] ;
+    }
+    for opt in $(list_opts)
+    {
+        local matched = [ trim-left-nulls 
+                            [ MATCH "--(with|enable)-(.+)|(prefix)=(.+)" 
+                                    : $(opt) ] ] ;
+
+        # ECHO matched --> $(matched) ;
+
+        switch $(matched[1])
+        {
+            case prefix :
+            {
+                configure prefix : $(matched[2]) ;
+            }
+            case with :
+            {
+                local with = [ trim-left-nulls [ MATCH
+                                 "([^-]+)-(includes|libraries)=(.+)|([^=]+)(=(.*))?"
+                                 : $(matched[2]) ] ] ;
+                #ECHO $(opt) --> $(with[1]) - $(with[2]) - $(with[3]) ;
+                local p = $(with[1]) ;
+                if ! ( $(p) in $(cmdl_all_pkgs) )
+                {
+                    cmdl_all_pkgs += $(p) ;          
+                }
+                local sub_feat = $(with[2]) ;
+                if [ MATCH (includes|libraries) : $(sub_feat) ]
+                {
+                    #ECHO "pkg_$(p)_$(sub_feat) --> $(with[3]) "  ;
+                    pkg_$(p)_$(sub_feat) = $(with[3]) ;
+                }
+                else
+                {
+                   pkg_$(p)_prefix = $(with[3]) ;
+                }
+            }
+            case enable :
+            {
+               cmdl_all_enabled += $(matched[2]) ;
+               enabled_$(matched[2]) += 1 ;
+            }
+        }
+    }
+
+    for local p in $(cmdl_all_pkgs)
+    {
+        # ECHO configure $(p) - $(pkg_$(p)_includes) - $(pkg_$(p)_libraries) ;
+        configure lib 
+            : $(p) : $(pkg_$(p)_prefix) 
+                   : $(pkg_$(p)_includes) 
+                   : $(pkg_$(p)_libraries) ;
+        pkg_$(p)_prefix = ;
+        pkg_$(p)_includes = ;
+        pkg_$(p)_libraries = ;
+    }
+
+    for local f in $(cmdl_all_enabled)
+    {
+        configure enable : $(f) ;
+    }
+    cmdl_all_pkgs = ;
+    cmdl_all_enabled = ;
 }
 
 IMPORT config : configure : : configure ;
