@@ -10,6 +10,7 @@
 #include "maindlg.h"
 #include "error.h"
 #include "filesystem.h"
+#include "translator.h"
 // gdal
 #include <gdal.h>
 #include <cpl_error.h>
@@ -67,7 +68,9 @@ LRESULT MainDlg::OnInitDialog(HWND /*hWnd*/, LPARAM /*lParam*/)
 
     // Initialize data
     m_mode = eModeSingle;
-    m_hDriver = NULL;
+    m_driver = NULL;
+    m_translator = NULL;
+    m_worker = NULL;
 
     // Initialize GDAL environment
     GDALAllRegister();
@@ -84,7 +87,7 @@ LRESULT MainDlg::OnInitDialog(HWND /*hWnd*/, LPARAM /*lParam*/)
 	return TRUE;
 }
 
-LRESULT MainDlg::OnRun(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+LRESULT MainDlg::OnStart(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 {
     BOOL ret = DoDataExchange(DDX_SAVE);
     ATLASSERT(TRUE == ret);
@@ -202,62 +205,43 @@ LRESULT MainDlg::OnRun(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /
     //
     // Process collection of files
     //
-    std::vector<dataset_t>::size_type filesCounter = 0;
 
-    for (std::vector<dataset_t>::const_iterator it = m_files.begin();
-         it != m_files.end(); ++it)
-    {
-        std::string const& fileInput = it->first;
-        std::string const& fileOutput = it->second;
+    assert(NULL == m_worker && NULL == m_translator);
 
-        // Update progress info
-        ATL::CPath szInputFile(CA2T(fileInput.c_str()));
-        ATL::CPath szOutputFile(CA2T(fileOutput.c_str()));
-
-        msg.Format(_T("Source (%u/%u): %s"),
-                   (filesCounter + 1), m_files.size(), szInputFile);
-        m_ctlProgressInfo.SetWindowText(msg);
-        msg.Format(_T("Target %s"), szOutputFile);
-        m_ctlProgressFileInfo.SetWindowText(msg);
-
-        // Check if the output directory exists, otherwise
-        // create it recursively, from output file path.
-        fs::create_file_path_recurse(fileOutput);
-
-        // Translate MrSID file to JPEG200 ECW
-        ret = ProcessFile(fileInput.c_str(), fileOutput.c_str(), copyOptions);
-        if (!ret)
-        {
-            error::file_translation_failure(m_hWnd, fileInput);
-
-            // TODO: mloskot - Make exit on failure optional
-            return 0;
-        }
-
-        ++filesCounter;
-    }
-
-    //
-    // Update processing summary
-    //
-
-    // TODO - Replace with msg box
-    ATL::CString target(filesCounter > 1 ? _T("files") : _T("file"));
-    msg.Format(_T("Successfully translated %u of %u %s"),
-               filesCounter, m_files.size(), target);
-    
-    MessageBox(msg, _T("Finished!"), MB_OK | MB_ICONINFORMATION);
-
-    //
-    // Reset application state
-    //
-    UIResetState();
-    ClearDatasetList();
+    m_translator = new sid2jp2::Translator(m_hWnd, m_driver, copyOptions, m_files);
+    m_worker = new TranslatorThread((*m_translator), &Translator::Run);
+    m_worker->StartAndWait();
 
     return 0;
 }
 
-LRESULT MainDlg::OnCancel(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+LRESULT MainDlg::OnStop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+{
+    if (NULL != m_worker && NULL != m_translator)
+    {
+        m_translator->Stop();
+        if (m_worker->WaitUntilTerminate(5000))
+        {
+            // Thread has been terminated
+        }
+        else
+        {
+            // Termination timeout
+
+            // Ask for kill
+            m_worker->Terminate();
+        }
+
+        if (m_worker->IsTerminated())
+        {
+
+        }
+    }
+
+    return 0;
+}
+
+LRESULT MainDlg::OnClose(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 {
     CloseDialog(wID);
 	return 0;
@@ -425,57 +409,58 @@ LRESULT MainDlg::OnOutputOpen(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl
     return 0;
 }
 
+LRESULT MainDlg::OnTranslationStart(UINT, WPARAM, LPARAM, BOOL&)
+{
+    ::OutputDebugString(_T("OnTranslationStart\n"));
+    return 0;
+}
+
+LRESULT MainDlg::OnTranslationStop(UINT, WPARAM, LPARAM, BOOL&)
+{
+    ::OutputDebugString(_T("OnTranslationStop\n"));
+
+    // TODO - Replace with msg box
+    //ATL::CString target(filesCounter > 1 ? _T("files") : _T("file"));
+    //msg.Format(_T("Successfully translated %u of %u %s"),
+    //           filesCounter, m_files.size(), target);
+    //
+    //MessageBox(msg, _T("Finished!"), MB_OK | MB_ICONINFORMATION);
+
+    // Reset application state
+    UIResetState();
+    ClearDatasetList();
+
+    return 0;
+}
+
+LRESULT MainDlg::OnTranslationNext(UINT, WPARAM, LPARAM, BOOL&)
+{
+    ::OutputDebugString(_T("OnTranslationNext\n"));
+    return 0;
+}
+
+LRESULT MainDlg::OnTranslationProgress(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/)
+{
+    ::OutputDebugString(_T("OnTranslationProgress\n"));
+    
+    int percent = static_cast<int>(lParam);
+    
+    if (0 == percent)
+    {
+        m_ctlFileProgress.SetPos(0);
+    }
+    else
+    {
+        m_ctlFileProgress.StepIt();
+    }
+
+    return 0;
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // Public Member Functions
 /////////////////////////////////////////////////////////////////////////////
 
-int CPL_STDCALL MainDlg::FileProcessingCallback(double dfComplete,
-                                                const char* pszMessage,
-                                                void* pProgressArg)
-{
-    ATLASSERT(NULL != pProgressArg);
-
-    WTL::CProgressBarCtrl* pCtlProgress = NULL;
-    if (NULL != pProgressArg)
-    {
-        pCtlProgress = static_cast<WTL::CProgressBarCtrl*>(pProgressArg);
-        ATLASSERT(::IsWindow(*pCtlProgress));
-    }
-
-    static double dfLastComplete = -1.0;
-
-    if (dfLastComplete > dfComplete)
-    {
-        if (dfLastComplete >= 1.0)
-            dfLastComplete = -1.0;
-        else
-            dfLastComplete = dfComplete;
-    }
-
-    if (std::floor(dfLastComplete * 10) != std::floor(dfComplete * 10))
-    {
-        int nPercent = static_cast<int>(std::floor(dfComplete * 100));
-        
-        // TODO: Testing only
-        ATL::CString m;
-        m.Format(_T("Percent: %d\n"), nPercent);
-        ::OutputDebugString(m);
-
-        if (0 == nPercent)
-        {
-            pCtlProgress->SetPos(0);
-        }
-        else
-        {
-            // if (nPercent > 0 && nPercent < 100)
-            pCtlProgress->StepIt();
-        }
-    }
-
-    dfLastComplete = dfComplete;
-
-    return TRUE;
-}
 
 /////////////////////////////////////////////////////////////////////////////
 // Private Member Functions
@@ -592,8 +577,8 @@ BOOL MainDlg::InitializeGDALDriver()
     ATL::CString frmtOutput;
     frmtOutput.LoadString(IDS_GDAL_FRMT_OUTPUT);
 
-    m_hDriver = GDALGetDriverByName(CT2A(frmtOutput));
-    if (NULL == m_hDriver)
+    m_driver = GDALGetDriverByName(CT2A(frmtOutput));
+    if (NULL == m_driver)
     {
         msg.Format(_T("Can not find output driver '%s'!"), frmtOutput);
         MessageBox(msg, _T("Error!"), MB_OK | MB_ICONERROR);
@@ -601,7 +586,7 @@ BOOL MainDlg::InitializeGDALDriver()
     }
 
     // Check driver capabilities 
-    char** metaData  = GDALGetMetadata(m_hDriver, NULL);
+    char** metaData  = GDALGetMetadata(m_driver, NULL);
     if (FALSE == CSLFetchBoolean(metaData, GDAL_DCAP_CREATECOPY, FALSE))
     {
         msg.Format(_T("Driver '%s' does not support CreateCopy operation!"), frmtOutput);
@@ -610,33 +595,4 @@ BOOL MainDlg::InitializeGDALDriver()
     }
 
     return TRUE;
-}
-
-BOOL MainDlg::ProcessFile(const char* inputFile, const char* outputFile,
-                          char** options)
-{
-    GDALDatasetH hSrcDS = NULL;
-    GDALDatasetH hDstDS = NULL;
-
-    ATLASSERT(NULL != m_hDriver);
-    ATLASSERT(NULL != inputFile && NULL != outputFile);
-
-    hSrcDS = GDALOpen(inputFile, GA_ReadOnly);
-    if (NULL != hSrcDS)
-    {
-        hDstDS = GDALCreateCopy(m_hDriver, outputFile, hSrcDS, FALSE, options,
-                                &MainDlg::FileProcessingCallback,
-                                &m_ctlFileProgress);
-
-        if (NULL != hDstDS)
-        {
-            GDALClose(hDstDS);
-
-            // SUCCESS
-            return TRUE;
-        }
-    }
-
-    // FAILURE
-    return FALSE;
 }

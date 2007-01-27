@@ -6,6 +6,9 @@
 #ifndef SID2JP2_MAINDLG_H_INCLUDED
 #define SID2JP2_MAINDLG_H_INCLUDED
 
+#include "dataset.h"
+#include "thread.h"
+#include "translator.h"
 // gdal
 #include <gdal.h>
 // std
@@ -63,43 +66,62 @@ public:
     // Windows Messages map
     //
 	BEGIN_MSG_MAP_EX(MainDlg)
+
+        // SID2JP2 Translation Messages
+        MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_START, OnTranslationStart)
+        MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_STOP, OnTranslationStop)
+        MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_STOP, OnTranslationNext)
+        MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_PROGRESS, OnTranslationProgress)
+
+        // Windows Messages
 		MSG_WM_INITDIALOG(OnInitDialog)
-        //NOTIFY_HANDLER(IDC_OPT_RATIO_SPIN, UDN_DELTAPOS, OnRatioSpinChanged2)
         MESSAGE_HANDLER(WM_NOTIFY, OnRatioSpinChanged)
+        //NOTIFY_HANDLER(IDC_OPT_RATIO_SPIN, UDN_DELTAPOS, OnRatioSpinChanged2)
+
+        // User-Interface Commands
         COMMAND_HANDLER(IDC_OPT_RATIO_BOX, EN_CHANGE, OnRatioBoxChanged)
         COMMAND_HANDLER(IDC_OPT_RATIO_BOX, EN_SETFOCUS, OnRatioBoxFocus)
-        COMMAND_RANGE_HANDLER(IDC_MODE_SINGLE, IDC_MODE_BATCH, OnModeChanged)
         COMMAND_HANDLER(IDC_MODE_BATCH_RECURSIVE, BN_CLICKED, OnModeRecursiveChanged)
+        COMMAND_RANGE_HANDLER(IDC_MODE_SINGLE, IDC_MODE_BATCH, OnModeChanged)
         COMMAND_ID_HANDLER(IDC_OPEN_INPUT, OnInputOpen)
         COMMAND_ID_HANDLER(IDC_OPEN_OUTPUT, OnOutputOpen)
-        COMMAND_ID_HANDLER(IDC_RUN, OnRun)
-		COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
+        COMMAND_ID_HANDLER(IDC_START, OnStart)
+        COMMAND_ID_HANDLER(IDC_STOP, OnStop)
+        COMMAND_ID_HANDLER(IDC_CLOSE, OnClose)
+		COMMAND_ID_HANDLER(IDCANCEL, OnClose)
 		COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAppAbout)
         COMMAND_ID_HANDLER(ID_APP_HELP, OnAppHelp)
         CHAIN_MSG_MAP(CUpdateUI<MainDlg>)
     END_MSG_MAP()
 
     //
+    // SID2JP2 Translation Message handlers
+    //
+    LRESULT OnTranslationStart(UINT, WPARAM, LPARAM, BOOL&);
+    LRESULT OnTranslationStop(UINT, WPARAM, LPARAM, BOOL&);
+    LRESULT OnTranslationNext(UINT, WPARAM, LPARAM, BOOL&);
+    LRESULT OnTranslationProgress(UINT, WPARAM, LPARAM, BOOL&);
+
+    //
     // Windows Message and Commands handlers
     //
-	LRESULT OnInitDialog(HWND /*hWnd*/, LPARAM /*lParam*/);
-    LRESULT OnRun(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	LRESULT OnCancel(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnInitDialog(HWND, LPARAM);
+    LRESULT OnStart(WORD, WORD wID, HWND, BOOL&);
+    LRESULT OnStop(WORD, WORD wID, HWND, BOOL&);
+	LRESULT OnClose(WORD, WORD, HWND, BOOL&);
     LRESULT OnAppAbout(WORD, WORD, HWND, BOOL& );
     LRESULT OnAppHelp(WORD, WORD, HWND, BOOL& );
+    LRESULT OnInputOpen(WORD, WORD, HWND, BOOL&);
+    LRESULT OnOutputOpen(WORD, WORD, HWND, BOOL&);
+    LRESULT OnRatioSpinChanged(UINT, WPARAM, LPARAM, BOOL&);
+    LRESULT OnRatioBoxChanged(WORD, WORD, HWND, BOOL&);
+    LRESULT OnRatioBoxFocus(WORD, WORD, HWND, BOOL&);
     LRESULT OnModeChanged(WORD, WORD, HWND, BOOL& );
     LRESULT OnModeRecursiveChanged(WORD, WORD, HWND, BOOL& );
-    LRESULT OnRatioSpinChanged(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled);
-    LRESULT OnRatioBoxChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-    LRESULT OnRatioBoxFocus(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-    LRESULT OnInputOpen(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-    LRESULT OnOutputOpen(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
     //
     // Other Public Interface
     //
-    static int __stdcall FileProcessingCallback(double dfComplete,
-        const char* pszMessage, void* pProgressArg);
 
 private:
 
@@ -132,11 +154,13 @@ private:
 
     ATL::CString m_pathInput;
     ATL::CString m_pathOutput;
+    GDALDriverH m_driver;
+    std::vector<sid2jp2::dataset_t> m_files;
+    
+    sid2jp2::Translator* m_translator;
 
-    GDALDriverH m_hDriver;
-
-    typedef std::pair<std::string, std::string> dataset_t;
-    std::vector<dataset_t> m_files;
+    typedef thread::TThread<sid2jp2::Translator> TranslatorThread;
+    TranslatorThread* m_worker;
 
     //
     // Private Function Members

@@ -211,6 +211,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\src\filesystem.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\src\main.cpp"
 				>
 			</File>
@@ -238,6 +242,14 @@
 					/>
 				</FileConfiguration>
 			</File>
+			<File
+				RelativePath="..\src\thread.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\src\translator.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -245,6 +257,10 @@
 			>
 			<File
 				RelativePath="..\src\aboutdlg.h"
+				>
+			</File>
+			<File
+				RelativePath="..\src\dataset.h"
 				>
 			</File>
 			<File
@@ -265,6 +281,14 @@
 			</File>
 			<File
 				RelativePath="..\src\stdafx.h"
+				>
+			</File>
+			<File
+				RelativePath="..\src\thread.h"
+				>
+			</File>
+			<File
+				RelativePath="..\src\translator.h"
 				>
 			</File>
 		</Filter>

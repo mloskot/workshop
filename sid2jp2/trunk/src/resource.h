@@ -24,7 +24,10 @@
 #define IDC_OPT_RATIO_BOX               1012
 #define IDC_PROGRESS_INFO               1013
 #define IDC_PROGRESS_FILE_INFO          1014
-#define IDC_RUN                         1015
+#define IDC_START                       1015
+#define IDC_STOP                        1016
+#define IDC_START2                      1016
+#define IDC_CLOSE                       1017
 
 // Next default values for new objects
 // 
@@ -32,7 +35,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        204
 #define _APS_NEXT_COMMAND_VALUE         32772
-#define _APS_NEXT_CONTROL_VALUE         1016
+#define _APS_NEXT_CONTROL_VALUE         1017
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
