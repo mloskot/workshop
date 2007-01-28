@@ -64,7 +64,7 @@ LRESULT MainDlg::OnInitDialog(HWND /*hWnd*/, LPARAM /*lParam*/)
 	ATLASSERT(TRUE == bExchanged);
 
     // Initialize UI
-    UIResetState();
+    UISetStateReady();
 
     // Initialize data
     m_mode = eModeSingle;
@@ -94,8 +94,6 @@ LRESULT MainDlg::OnStart(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL&
 
     // Common message buffor
     ATL::CString msg;
-
-    //WTL::CWaitCursor wait(TRUE);
     UIResetProgressBar();
 
     //
@@ -153,7 +151,7 @@ LRESULT MainDlg::OnStart(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL&
     {
         m_ctlProgressInfo.SetWindowText(_T("Ready!"));
         msg.Format(_T("Please, select source and target dataset!"));
-        MessageBox(msg, _T("No dataset!"), MB_OK | MB_ICONSTOP);
+        MessageBox(msg, _T("Error!"), MB_OK | MB_ICONSTOP);
         return 0;
     }
 
@@ -203,7 +201,16 @@ LRESULT MainDlg::OnStart(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL&
     }
 
     //
-    // Process collection of files
+    // Set busy state
+    //
+
+    // TODO: - Add busy state
+
+    UISetStateBusy();
+
+
+    //
+    // Start processing collection of files
     //
 
     assert(NULL == m_worker && NULL == m_translator);
@@ -217,24 +224,29 @@ LRESULT MainDlg::OnStart(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL&
 
 LRESULT MainDlg::OnStop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 {
+    // Non-NULL values indicate the worker thread is active
     if (NULL != m_worker && NULL != m_translator)
     {
-        m_translator->Stop();
-        if (m_worker->WaitUntilTerminate(5000))
-        {
-            // Thread has been terminated
-        }
-        else
-        {
-            // Termination timeout
+        // No suspension or pause is expected, only terminated|running
+        assert(m_worker->IsRunning());
 
-            // Ask for kill
+        m_translator->Terminate();
+        if (!m_worker->WaitUntilTerminate())
+        {
+            // Termination failure, force to kill - unsafe!
             m_worker->Terminate();
         }
 
         if (m_worker->IsTerminated())
         {
+            // Thread has been terminated
+            delete m_translator;
+            m_translator = NULL;
 
+            delete m_worker;
+            m_worker = NULL;
+
+            UISetStateReady();
         }
     }
 
@@ -409,42 +421,31 @@ LRESULT MainDlg::OnOutputOpen(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl
     return 0;
 }
 
-LRESULT MainDlg::OnTranslationStart(UINT, WPARAM, LPARAM, BOOL&)
-{
-    ::OutputDebugString(_T("OnTranslationStart\n"));
-    return 0;
-}
-
-LRESULT MainDlg::OnTranslationStop(UINT, WPARAM, LPARAM, BOOL&)
-{
-    ::OutputDebugString(_T("OnTranslationStop\n"));
-
-    // TODO - Replace with msg box
-    //ATL::CString target(filesCounter > 1 ? _T("files") : _T("file"));
-    //msg.Format(_T("Successfully translated %u of %u %s"),
-    //           filesCounter, m_files.size(), target);
-    //
-    //MessageBox(msg, _T("Finished!"), MB_OK | MB_ICONINFORMATION);
-
-    // Reset application state
-    UIResetState();
-    ClearDatasetList();
-
-    return 0;
-}
-
-LRESULT MainDlg::OnTranslationNext(UINT, WPARAM, LPARAM, BOOL&)
+LRESULT MainDlg::OnTranslationNext(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
 {
     ::OutputDebugString(_T("OnTranslationNext\n"));
+
+    size_t counter = static_cast<size_t>(wParam);
+    dataset_t const* ds = reinterpret_cast<dataset_t const*>(lParam);
+
+    ATL::CPath szInputFile(CA2T(ds->first.c_str()));
+    ATL::CPath szOutputFile(CA2T(ds->second.c_str()));
+
+    ATL::CString msg;
+    msg.Format(_T("Source (%u/%u): %s"), (counter + 1), m_files.size(), szInputFile);
+    m_ctlProgressInfo.SetWindowText(msg);
+
+    msg.Format(_T("Target %s"), szOutputFile);
+    m_ctlProgressFileInfo.SetWindowText(msg);
+
     return 0;
 }
 
-LRESULT MainDlg::OnTranslationProgress(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/)
+LRESULT MainDlg::OnTranslationProgress(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 {
     ::OutputDebugString(_T("OnTranslationProgress\n"));
     
-    int percent = static_cast<int>(lParam);
-    
+    int percent = static_cast<int>(wParam);
     if (0 == percent)
     {
         m_ctlFileProgress.SetPos(0);
@@ -457,6 +458,12 @@ LRESULT MainDlg::OnTranslationProgress(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM 
     return 0;
 }
 
+LRESULT MainDlg::OnTranslationFailure(UINT, WPARAM, LPARAM, BOOL&)
+{
+    ::OutputDebugString(_T("OnTranslationFailure\n"));
+    return 0;
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // Public Member Functions
 /////////////////////////////////////////////////////////////////////////////
@@ -466,7 +473,7 @@ LRESULT MainDlg::OnTranslationProgress(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM 
 // Private Member Functions
 /////////////////////////////////////////////////////////////////////////////
 
-void MainDlg::UIResetState()
+void MainDlg::UISetStateReady()
 {
     ATLASSERT(::IsWindow(m_ctlPathInput));
     ATLASSERT(::IsWindow(m_ctlPathOutput));
@@ -475,6 +482,10 @@ void MainDlg::UIResetState()
     ATLASSERT(::IsWindow(m_ctlFileProgress));
     ATLASSERT(::IsWindow(m_ctlProgressInfo));
     ATLASSERT(::IsWindow(m_ctlProgressFileInfo));
+
+    UIEnable(IDC_START, true);
+    UIEnable(IDC_CLOSE, true);
+    UIEnable(IDC_STOP, false);
 
     UISetCheck(IDC_MODE_BATCH_RECURSIVE, false);
     UISetRadio(IDC_MODE_BATCH, false, TRUE);
@@ -502,6 +513,13 @@ void MainDlg::UIResetState()
     // TODO: Move info messages to resources
     m_ctlProgressInfo.SetWindowText(_T("Ready!"));
     m_ctlProgressFileInfo.SetWindowText(_T(""));
+}
+
+void MainDlg::UISetStateBusy()
+{
+    UIEnable(IDC_START, false);
+    UIEnable(IDC_CLOSE, false);
+    UIEnable(IDC_STOP, true);
 }
 
 void MainDlg::UIResetProgressBar()

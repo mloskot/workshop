@@ -23,15 +23,14 @@ namespace sid2jp2
 // Register messages used to notify the listener window
 // about translation process.
 //
-UINT WM_SID2JP2_START = ::RegisterWindowMessage(_T("WM_SID2JP2_START"));
-UINT WM_SID2JP2_STOP = ::RegisterWindowMessage(_T("WM_SID2JP2_STOP"));
-UINT WM_SID2JP2_NEXT = ::RegisterWindowMessage(_T("WM_SID2JP2_NEXT"));
-UINT WM_SID2JP2_PROGRESS = ::RegisterWindowMessage(_T("WM_SID2JP2_PROGRESS"));
+UINT WM_SID2JP2_FILE_NEXT = ::RegisterWindowMessage(_T("WM_SID2JP2_FILE_NEXT"));
+UINT WM_SID2JP2_FILE_PROGRESS = ::RegisterWindowMessage(_T("WM_SID2JP2_FILE_PROGRESS"));
+UINT WM_SID2JP2_FILE_FAILURE = ::RegisterWindowMessage(_T("WM_SID2JP2_FILE_FAILURE"));
 
 Translator::Translator(HWND listener, GDALDriverH driver, char** options,
                        std::vector<dataset_t> const& datasets)
                        : m_listener(NULL),
-                         m_stop(false),
+                         m_running(false),
                          m_driver(driver),
                          m_options(options),
                          m_datasets(datasets)
@@ -48,102 +47,100 @@ Translator::~Translator()
     m_listener.Detach();
 }
 
+bool Translator::IsTerminating() const
+{
+    return (!m_running);
+}
+
+HWND Translator::GetListener() const
+{
+    return m_listener;
+}
+
 void Translator::Run()
 {
-    m_listener.SendMessage(WM_SID2JP2_START);
+    m_running = true;
 
-    bool success = false;
-    std::vector<dataset_t>::size_type filesCounter = 0;
+    std::vector<dataset_t>::size_type counter = 0;
 
     for (std::vector<dataset_t>::const_iterator it = m_datasets.begin(); 
-        it != m_datasets.end();
+        m_running && it != m_datasets.end();
         ++it)
     {
-        if (m_stop)
-        {
-            // Send confirmation request
-            break;
-        }
+        dataset_t const* ptrDS = &(*it);
+        m_listener.SendMessage(WM_SID2JP2_FILE_NEXT,
+                               static_cast<WPARAM>(counter),
+                               reinterpret_cast<LPARAM>(ptrDS));
 
         std::string const& fileInput = it->first;
         std::string const& fileOutput = it->second;
-
-        m_listener.SendMessage(WM_SID2JP2_NEXT);
-
-        //// Update progress info
-        //ATL::CPath szInputFile(CA2T(fileInput.c_str()));
-        //ATL::CPath szOutputFile(CA2T(fileOutput.c_str()));
-
-        //msg.Format(_T("Source (%u/%u): %s"),
-        //           (filesCounter + 1), m_files.size(), szInputFile);
-        //m_ctlProgressInfo.SetWindowText(msg);
-        //msg.Format(_T("Target %s"), szOutputFile);
-        //m_ctlProgressFileInfo.SetWindowText(msg);
 
         // Check if the output directory exists, otherwise
         // create it recursively, from output file path.
         fs::create_file_path_recurse(fileOutput);
 
         // Translate MrSID file to JPEG200 ECW
-        success = ProcessFile(fileInput.c_str(), fileOutput.c_str());
-        if (!success)
+        if (!ProcessFile(fileInput.c_str(), fileOutput.c_str()))
         {
-            // TODO: mloskot - Notify listener about translation failure
+            dataset_t const* ptrFailedDS = &(*it);
+            m_listener.SendMessage(WM_SID2JP2_FILE_FAILURE,
+                                   static_cast<WPARAM>(counter),
+                                   reinterpret_cast<LPARAM>(ptrFailedDS));
 
-            assert(false);
-
+            m_running = false;
             //error::file_translation_failure(m_hWnd, fileInput);
         }
 
-        ++filesCounter;
+        ++counter;
     }
-
-    m_listener.SendMessage(WM_SID2JP2_STOP);
 }
 
-void Translator::Stop()
+void Translator::Terminate()
 {
-    m_stop = true;
+    m_running = false;
 }
 
 bool Translator::ProcessFile(const char* inputFile, const char* outputFile)
 {
-    GDALDatasetH hSrcDS = NULL;
-    GDALDatasetH hDstDS = NULL;
-
     ATLASSERT(NULL != m_driver);
     ATLASSERT(NULL != inputFile && NULL != outputFile);
 
-    hSrcDS = GDALOpen(inputFile, GA_ReadOnly);
-    if (NULL != hSrcDS)
+    bool success = false;
+    GDALDatasetH srcDS = NULL;
+    GDALDatasetH dstDS = NULL;
+    
+    srcDS = GDALOpen(inputFile, GA_ReadOnly);
+    if (NULL != srcDS)
     {
-        hDstDS = GDALCreateCopy(m_driver, outputFile, hSrcDS, FALSE, m_options,
-                                &Translator::ProcessingCallback, &m_listener);
-
-        if (NULL != hDstDS)
+        dstDS = GDALCreateCopy(m_driver, outputFile, srcDS, FALSE, m_options,
+                                &TranslationCallback, this);
+        if (NULL != dstDS)
         {
-            GDALClose(hDstDS);
+            GDALClose(dstDS);
+            dstDS = NULL;
 
-            // SUCCESS
-            return TRUE;
+            success = true;
         }
+
+        GDALClose(srcDS);
+        srcDS = NULL;
     }
 
-    // FAILURE
-    return FALSE;
+    return success;
 }
 
-int CPL_STDCALL Translator::ProcessingCallback(double complete, const char* msg, void* pArg)
+int CPL_STDCALL TranslationCallback(double complete, const char* msg, void* pArg)
 {
-    ATLASSERT(NULL != pArg);
+    assert(NULL != pArg);
 
-    ATL::CWindow listener;
-    if (NULL != pArg)
+    Translator* translator = static_cast<Translator*>(pArg);
+    if (translator->IsTerminating())
     {
-        listener.Attach(*(static_cast<HWND*>(pArg)));
-        ATLASSERT(::IsWindow(listener));
+        // Abort requested
+        return false;
     }
-
+    
+    // Generate progress info
     static double lastComplete = -1.0;
 
     if (lastComplete > complete)
@@ -157,22 +154,16 @@ int CPL_STDCALL Translator::ProcessingCallback(double complete, const char* msg,
     if (std::floor(lastComplete * 10) != std::floor(complete * 10))
     {
         int percent = static_cast<int>(std::floor(complete * 100));
-        
-        // TODO: Testing only
-        ATL::CString m;
-        m.Format(_T("Percent: %d\n"), percent);
-        ::OutputDebugString(m);
 
-        listener.SendMessage(WM_SID2JP2_PROGRESS, 0, static_cast<LPARAM>(percent));
-
+        HWND listener = translator->GetListener();
+        assert(::IsWindow(listener));
+        ::SendMessage(listener, WM_SID2JP2_FILE_PROGRESS, static_cast<WPARAM>(percent), 0);
     }
 
     lastComplete = complete;
 
-    listener.Detach();
     return true;
 }
-
 
 } // namespace sid2jp2
 

@@ -4,8 +4,8 @@
 // Those are two standard threads class, that encapsulate
 // all the thread operation.
 //
-#ifndef THREAD__H_INCLUDED
-#define THREAD__H_INCLUDED
+#ifndef THREAD_H_INCLUDED
+#define THREAD_H_INCLUDED
 
 #include <windows.h>
 #include <process.h>
@@ -13,64 +13,6 @@
 
 namespace thread
 {
-
-class CThread
-{
-public:
-    //-- The constructor --
-    CThread(int nPriority = THREAD_PRIORITY_NORMAL); 
-    //-- Wait until the thread terminate, after this function you are sure that the thread is terminated.
-    bool WaitUntilTerminate(DWORD dwMiliSec = INFINITE);
-    //-- Start the thread or recreate it, if it has been terminated before --
-    bool Start(); 
-    //-- Start the thread and return when it actualy start --
-    bool StartAndWait();
-    //-- Pause the thread --
-    bool Pause();
-    //-- Check if the thread is running or not.
-    bool IsRunning();
-    //-- check if the thread has been terminated or not.
-    bool IsTerminated();
-    //-- Check for the thread is suspend or not.
-    bool IsSuspend();
-    //-- Set thread priority
-    void SetPriority(int nLevel);
-    //-- Get thread priority
-    int GetPriority();
-    //-- Speed up thread execution - increase priority level
-    void SpeedUp(); 
-    //-- Slow down Thread execution - decrease priority level
-    void SlowDown();
-    //-- Terminate immediate the thread Unsafe.
-    void Terminate();
-
-protected:
-    //-- put the initialization code here.
-    virtual void OnInitInstance(){}
-    //-- put the main code of the thread here.
-    virtual void OnRunning() = 0; //-- Must be overloaded --
-    //-- put the cleanup code here.
-    virtual DWORD OnExitInstance(){return 0;}
-    //-- Exit the thread safety.
-    void Exit(); 
-    //-- Thread function --
-    static unsigned __stdcall _ThreadProc(LPVOID lpParameter);
-    //-- Destructor --
-    virtual ~CThread()
-    {
-        ::CloseHandle(m_hEvent);
-    }
-
-protected:
-    HANDLE m_hThread, m_hEvent; //-- Thread and Event handle --
-    int m_nInitPriority;
-    unsigned int m_dwThreadID; //-- Contain the thread ID --
-    //-- Variable to know the state of the thread terminated or suspend or Running -- 
-    bool m_bTerminate, m_bSuspend, m_bIsRunning;
-
-}; // class CThread
-
-/////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
 class TThread
@@ -313,4 +255,4 @@ template<typename T> unsigned __stdcall TThread<T>::_ThreadProc(LPVOID lpParamet
 
 } // namespace thread
 
-#endif  // THREAD__H_INCLUDED
+#endif  // THREAD_H_INCLUDED

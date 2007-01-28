@@ -243,10 +243,6 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\src\thread.cpp"
-				>
-			</File>
-			<File
 				RelativePath="..\src\translator.cpp"
 				>
 			</File>

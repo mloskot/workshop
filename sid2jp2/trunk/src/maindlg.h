@@ -53,6 +53,9 @@ public:
     // UI Updating Controls map
     //
 	BEGIN_UPDATE_UI_MAP(MainDlg)
+        UPDATE_ELEMENT(IDC_START, UPDUI_CHILDWINDOW)
+        UPDATE_ELEMENT(IDC_STOP, UPDUI_CHILDWINDOW)
+        UPDATE_ELEMENT(IDC_CLOSE, UPDUI_CHILDWINDOW)
         UPDATE_ELEMENT(IDC_MODE_SINGLE, UPDUI_CHILDWINDOW)
         UPDATE_ELEMENT(IDC_MODE_BATCH, UPDUI_CHILDWINDOW)
         UPDATE_ELEMENT(IDC_MODE_BATCH_RECURSIVE, UPDUI_CHILDWINDOW)
@@ -68,10 +71,9 @@ public:
 	BEGIN_MSG_MAP_EX(MainDlg)
 
         // SID2JP2 Translation Messages
-        MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_START, OnTranslationStart)
-        MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_STOP, OnTranslationStop)
-        MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_STOP, OnTranslationNext)
-        MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_PROGRESS, OnTranslationProgress)
+        MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_FILE_PROGRESS, OnTranslationProgress)
+        MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_FILE_NEXT, OnTranslationNext)
+        MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_FILE_FAILURE, OnTranslationFailure)
 
         // Windows Messages
 		MSG_WM_INITDIALOG(OnInitDialog)
@@ -97,8 +99,7 @@ public:
     //
     // SID2JP2 Translation Message handlers
     //
-    LRESULT OnTranslationStart(UINT, WPARAM, LPARAM, BOOL&);
-    LRESULT OnTranslationStop(UINT, WPARAM, LPARAM, BOOL&);
+    LRESULT OnTranslationFailure(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnTranslationNext(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnTranslationProgress(UINT, WPARAM, LPARAM, BOOL&);
 
@@ -135,6 +136,7 @@ private:
     WTL::CStatic m_ctlProgressInfo;
     WTL::CStatic m_ctlProgressFileInfo;
     WTL::CProgressBarCtrl m_ctlFileProgress;
+    //WTL::CWaitCursor m_ctlWaitCursor;
 
     //
     // Internal Data
@@ -157,14 +159,16 @@ private:
     GDALDriverH m_driver;
     std::vector<sid2jp2::dataset_t> m_files;
     
-    sid2jp2::Translator* m_translator;
-
     typedef thread::TThread<sid2jp2::Translator> TranslatorThread;
     TranslatorThread* m_worker;
+    sid2jp2::Translator* m_translator;
 
     //
     // Private Function Members
     //
+    void UISetStateReady();
+    void UISetStateBusy();
+
     void UIResetState();
     void UIResetProgressBar();
     void UIResetPathBoxes();
