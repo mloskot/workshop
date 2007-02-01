@@ -53,7 +53,7 @@ BOOL MainDlg::OnIdle()
 	return FALSE;
 }
 
-LRESULT MainDlg::OnInitDialog(HWND /*hWnd*/, LPARAM /*lParam*/)
+LRESULT MainDlg::OnInitDialog(HWND hWnd, LPARAM lParam)
 {
 	// center the dialog on the screen
 	CenterWindow();
@@ -94,6 +94,18 @@ LRESULT MainDlg::OnInitDialog(HWND /*hWnd*/, LPARAM /*lParam*/)
 	return TRUE;
 }
 
+void MainDlg::OnSysCommand(UINT nCode, WTL::CPoint /*point*/)
+{
+    SetMsgHandled(FALSE);
+
+    switch (nCode)
+    {
+    case SC_CLOSE:
+        SendMessage(WM_CLOSE);
+        SetMsgHandled(TRUE);
+        break;
+    }
+}
 LRESULT MainDlg::OnSetCursor(HWND wParam, UINT uHitTest, UINT uMsg)
 {
     if (IsTranslating())
@@ -109,7 +121,7 @@ LRESULT MainDlg::OnSetCursor(HWND wParam, UINT uHitTest, UINT uMsg)
     return FALSE;
 }
 
-LRESULT MainDlg::OnStart(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+LRESULT MainDlg::OnStart(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
     m_waitCursor.Set();
 
@@ -244,53 +256,43 @@ LRESULT MainDlg::OnStart(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL&
     return 0;
 }
 
-LRESULT MainDlg::OnStop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+LRESULT MainDlg::OnStop(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
-    if (IsTranslating())
-    {
-        m_translator->Terminate();
-        if (!m_worker->WaitUntilTerminate())
-        {
-            // Termination failure, force to kill - unsafe!
-            m_worker->Terminate();
-        }
-
-        if (m_worker->IsTerminated())
-        {
-            // Thread has been terminated
-            delete m_translator;
-            m_translator = NULL;
-
-            delete m_worker;
-            m_worker = NULL;
-
-            UISetStateReady();
-        }
-    }
+    BOOL bRet = StopTranslation();    
 
     return 0;
 }
 
-LRESULT MainDlg::OnClose(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+LRESULT MainDlg::OnClose(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
+    // If translation is in progress, ask for abort.
+    if (IsTranslating())
+    {
+        if (!StopTranslation())
+        {
+            // Close action canceled 
+            return 0;
+        }
+    }
+
     CloseDialog(wID);
 	return 0;
 }
 
-LRESULT MainDlg::OnAppAbout(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+LRESULT MainDlg::OnAppAbout(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
 	AboutDlg dlg;
 	dlg.DoModal();
 	return 0;
 }
 
-LRESULT MainDlg::OnAppHelp(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+LRESULT MainDlg::OnAppHelp(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
     MessageBox(_T("Simple manual will be here available"), _T("Help!"), MB_OK);
 	return 0;
 }
 
-LRESULT MainDlg::OnModeChanged(WORD wNotifyCode, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+LRESULT MainDlg::OnModeChanged(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
     if(BN_CLICKED == wNotifyCode)
     {
@@ -307,13 +309,13 @@ LRESULT MainDlg::OnModeChanged(WORD wNotifyCode, WORD /*wID*/, HWND /*hWndCtl*/,
         }
 
         // Reset input/output paths
-        UIResetPathBoxes();
+        UISetStatePathBoxes(false);
     }
 
     return 0;
 }
 
-LRESULT MainDlg::OnModeRecursiveChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+LRESULT MainDlg::OnModeRecursiveChanged(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
     if (IsDlgButtonChecked(IDC_MODE_BATCH_RECURSIVE))
         m_mode = eModeBatchRecursive;
@@ -323,7 +325,7 @@ LRESULT MainDlg::OnModeRecursiveChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND
     return 0;
 }
 
-LRESULT MainDlg::OnRatioSpinChanged(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled)
+LRESULT MainDlg::OnRatioSpinChanged(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
     LPNMHDR pNMHDR = NULL;
     LPNMUPDOWN pNMUD = NULL;
@@ -346,16 +348,16 @@ LRESULT MainDlg::OnRatioSpinChanged(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPa
     return 0;
 }
 
-LRESULT MainDlg::OnRatioBoxChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+LRESULT MainDlg::OnRatioBoxChanged(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
     return 0;
 }
-LRESULT MainDlg::OnRatioBoxFocus(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+LRESULT MainDlg::OnRatioBoxFocus(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
     return 0;
 }
 
-LRESULT MainDlg::OnInputOpen(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+LRESULT MainDlg::OnInputOpen(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
     // TODO - dodac rozszerzenie i filtr do zasobow
 
@@ -383,6 +385,8 @@ LRESULT MainDlg::OnInputOpen(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*
             
             m_ctlPathInput.SetWindowText(m_pathInput);
             m_ctlPathOutput.SetWindowText(m_pathOutput);
+
+            UIEnable(IDC_START, true);
         }
     }
     else
@@ -407,7 +411,7 @@ LRESULT MainDlg::OnInputOpen(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*
     return 0;
 }
 
-LRESULT MainDlg::OnOutputOpen(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+LRESULT MainDlg::OnOutputOpen(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
     m_pathOutput.Empty();
 
@@ -422,6 +426,8 @@ LRESULT MainDlg::OnOutputOpen(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl
         {
             m_pathOutput = dlg.m_szFileName;
             m_ctlPathOutput.SetWindowText(m_pathOutput);
+
+            UIEnable(IDC_START, true);
         }
     }
     else
@@ -433,16 +439,16 @@ LRESULT MainDlg::OnOutputOpen(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl
         {
             m_pathOutput = dlg.GetFolderPath();
             m_ctlPathOutput.SetWindowText(m_pathOutput);
+
+            UIEnable(IDC_START, true);
         }
     }
 
     return 0;
 }
 
-LRESULT MainDlg::OnTranslationNext(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
+LRESULT MainDlg::OnTranslationNext(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
-    ::OutputDebugString(_T("OnTranslationNext\n"));
-
     size_t counter = static_cast<size_t>(wParam);
     dataset_t const* ds = reinterpret_cast<dataset_t const*>(lParam);
 
@@ -459,10 +465,8 @@ LRESULT MainDlg::OnTranslationNext(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, 
     return 0;
 }
 
-LRESULT MainDlg::OnTranslationProgress(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& /*bHandled*/)
+LRESULT MainDlg::OnTranslationProgress(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
-    ::OutputDebugString(_T("OnTranslationProgress\n"));
-    
     int percent = static_cast<int>(wParam);
     if (0 == percent)
     {
@@ -478,7 +482,6 @@ LRESULT MainDlg::OnTranslationProgress(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lP
 
 LRESULT MainDlg::OnTranslationFailure(UINT, WPARAM, LPARAM, BOOL&)
 {
-    ::OutputDebugString(_T("OnTranslationFailure\n"));
     return 0;
 }
 
@@ -509,7 +512,7 @@ void MainDlg::UISetStateReady()
     }
 
     UIEnable(IDC_CLOSE, true);
-    UIEnable(IDC_START, true);
+    UIEnable(IDC_START, false);
 
     UISetCheck(IDC_MODE_BATCH_RECURSIVE, false);
     UISetRadio(IDC_MODE_BATCH, false, TRUE);
@@ -529,7 +532,7 @@ void MainDlg::UISetStateReady()
     m_ctlRatioBox.SetWindowText(buf);
 
     // Initialize input/output paths
-    UIResetPathBoxes();
+    UISetStatePathBoxes(false);
 
     // Initialize progress controls
     UIResetProgressBar();
@@ -548,8 +551,30 @@ void MainDlg::UISetStateBusy()
         btnStart.SetWindowText(_T("Stop"));
     }
 
-    UIEnable(IDC_CLOSE, true);
+    UIEnable(IDC_CLOSE, false);
     UIEnable(IDC_STOP, true);
+
+    UIEnable(IDC_MODE_SINGLE, false);
+    UIEnable(IDC_MODE_BATCH, false);
+    UIEnable(IDC_MODE_BATCH_RECURSIVE, false);
+
+    UISetStatePathBoxes(true);
+}
+
+void MainDlg::UISetStatePathBoxes(BOOL bBusy)
+{
+    BOOL bEnable = bBusy ? false : true;
+
+    UIEnable(IDC_OPEN_INPUT, bEnable);
+    UIEnable(IDC_OPEN_OUTPUT, bEnable);
+    UIEnable(IDC_PATH_INPUT, bEnable);
+    UIEnable(IDC_PATH_OUTPUT, bEnable);
+
+    if (!bBusy)
+    {
+        m_ctlPathInput.SetWindowText(_T(""));
+        m_ctlPathOutput.SetWindowText(_T(""));
+    }
 }
 
 void MainDlg::UIResetProgressBar()
@@ -558,17 +583,6 @@ void MainDlg::UIResetProgressBar()
     m_ctlFileProgress.SetRange(0, 100);
     m_ctlFileProgress.SetPos(0);
     m_ctlFileProgress.SetStep(10);
-}
-
-void MainDlg::UIResetPathBoxes()
-{
-    UIEnable(IDC_OPEN_INPUT, true);
-    UIEnable(IDC_PATH_INPUT, true);
-    UIEnable(IDC_OPEN_OUTPUT, false);
-    UIEnable(IDC_PATH_OUTPUT, false);
-
-    m_ctlPathInput.SetWindowText(_T(""));
-    m_ctlPathOutput.SetWindowText(_T(""));
 }
 
 void MainDlg::ProcessRatioSpinChange(LPNMUPDOWN pNMUD, UINT nID)
@@ -629,6 +643,41 @@ BOOL MainDlg::IsTranslating() const
     }
 
     return FALSE;
+}
+
+BOOL MainDlg::StopTranslation()
+{
+    BOOL bStopped = FALSE;
+
+    if (IsTranslating())
+    {
+        ATL::CString msg(_T("Are you sure you want to abort the translation in progress?"));
+        if (IDYES == MessageBox(msg, _T("Abort?"), MB_YESNO | MB_ICONQUESTION))
+        {
+            m_translator->Terminate();
+            if (!m_worker->WaitUntilTerminate())
+            {
+                // Termination failure, force to kill - unsafe!
+                m_worker->Terminate();
+            }
+
+            if (m_worker->IsTerminated())
+            {
+                // Thread has been terminated
+                delete m_translator;
+                m_translator = NULL;
+
+                delete m_worker;
+                m_worker = NULL;
+
+                UISetStateReady();
+
+                bStopped = TRUE;
+            }
+        }
+    }
+
+    return bStopped;
 }
 
 BOOL MainDlg::InitializeGDALDriver()

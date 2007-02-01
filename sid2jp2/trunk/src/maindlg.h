@@ -79,6 +79,7 @@ public:
 
         // Windows Messages
 		MSG_WM_INITDIALOG(OnInitDialog)
+        MSG_WM_SYSCOMMAND(OnSysCommand)
         MSG_WM_SETCURSOR(OnSetCursor)
         MESSAGE_HANDLER(WM_NOTIFY, OnRatioSpinChanged)
 
@@ -113,7 +114,8 @@ public:
     // Windows Message and Commands handlers
     //
 	LRESULT OnInitDialog(HWND, LPARAM);
-    LRESULT OnSetCursor(HWND wParam, UINT uHitTest, UINT uMsg);
+    void OnSysCommand(UINT, WTL::CPoint);
+    LRESULT OnSetCursor(HWND, UINT, UINT);
     LRESULT OnStart(WORD, WORD wID, HWND, BOOL&);
     LRESULT OnStop(WORD, WORD wID, HWND, BOOL&);
 	LRESULT OnClose(WORD, WORD, HWND, BOOL&);
@@ -179,15 +181,14 @@ private:
 
     void UISetStateReady();
     void UISetStateBusy();
-
-    void UIResetState();
+    void UISetStatePathBoxes(BOOL bBusy);
     void UIResetProgressBar();
-    void UIResetPathBoxes();
     void CloseDialog(int nVal);
     void ProcessRatioSpinChange(LPNMUPDOWN pNMUD, UINT nID);
-
     void ClearDatasetList();
+
     BOOL IsTranslating() const;
+    BOOL StopTranslation();
     BOOL InitializeGDALDriver();
     BOOL ProcessFile(const char* inputFile, const char* outputFile, char** options);
 
