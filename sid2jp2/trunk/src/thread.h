@@ -1,8 +1,7 @@
 //
-// Copyrights Emad Barsoum 2002. All rights reserved.
+// Copyright (C) 2002 Emad Barsoum. All rights reserved.
 //
-// Those are two standard threads class, that encapsulate
-// all the thread operation.
+// Modified by Mateusz Loskot <mateusz@loskot.net>
 //
 #ifndef THREAD_H_INCLUDED
 #define THREAD_H_INCLUDED
@@ -11,15 +10,16 @@
 #include <process.h>
 #include <cassert>
 
-namespace thread
+namespace sid2jp2
 {
 
 template<typename T>
-class TThread
+class Thread
 {
 public:
+
     //-- The constructor --
-    TThread(T& thObject, void (T::*pfnOnRunning)(), int nPriority = THREAD_PRIORITY_NORMAL); 
+    Thread(T& thObject, void (T::*pfnOnRunning)(), int nPriority = THREAD_PRIORITY_NORMAL); 
     //-- Wait until the thread terminate, after this function you are sure that the thread is terminated.
     bool WaitUntilTerminate(DWORD dwMiliSec = INFINITE);
     //-- Start the thread or recreate it, if it has been terminated before --
@@ -29,15 +29,15 @@ public:
     //-- Pause the thread --
     bool Pause();
     //-- Check if the thread is running or not.
-    bool IsRunning();
+    bool IsRunning() const;
     //-- check if the thread has been terminated or not.
-    bool IsTerminated();
+    bool IsTerminated() const;
     //-- Check for the thread is suspend or not.
-    bool IsSuspend();
+    bool IsSuspend() const;
     //-- Set thread priority
     void SetPriority(int nLevel);
     //-- Get thread priority
-    int GetPriority();
+    int GetPriority() const;
     //-- Speed up thread execution - increase priority level
     void SpeedUp(); 
     //-- Slow down Thread execution - decrease priority level
@@ -45,11 +45,13 @@ public:
     //-- Terminate immediate the thread Unsafe.
     void Terminate();
     //-- Destructor
-    virtual ~TThread()
+    virtual ~Thread()
     {
         ::CloseHandle(m_hEvent);
     }
+
 protected:
+
     //-- Thread function --
     static unsigned __stdcall _ThreadProc(LPVOID lpParameter);
     //-- Exit the thread safety.
@@ -58,6 +60,7 @@ protected:
     inline void OnRunning();
 
 protected:
+
     T& m_thObject; //-- The thread object --
     void (T::*m_pfnOnRunning)();
     HANDLE m_hThread, m_hEvent; //-- Thread and Event handle --
@@ -66,11 +69,13 @@ protected:
     //-- Variable to know the state of the thread terminated or suspend or Running -- 
     bool m_bTerminate, m_bSuspend, m_bIsRunning;
 
-}; // class TThread
+}; // class Thread
 
 /////////////////////////////////////////////////////////////////////////////
 
-template<typename T> TThread<T>::TThread(T& thObject,void (T::*pfnOnRunning)(), int nPriority):m_thObject(thObject),m_pfnOnRunning(pfnOnRunning)
+template<typename T> Thread<T>::Thread(T& thObject, void (T::*pfnOnRunning)(),
+                                       int nPriority):m_thObject(thObject),
+                                       m_pfnOnRunning(pfnOnRunning)
 {
     m_hThread = NULL;
     m_dwThreadID = 0;
@@ -81,11 +86,14 @@ template<typename T> TThread<T>::TThread(T& thObject,void (T::*pfnOnRunning)(), 
     m_hEvent = ::CreateEvent(NULL,FALSE,FALSE,NULL);      
 }
 
-template<typename T> bool TThread<T>::Start()
+template<typename T> bool Thread<T>::Start()
 {
     if(m_bTerminate)
     {
-        m_hThread = (HANDLE)_beginthreadex(NULL,0,_ThreadProc,(LPVOID)this,0/* CREATE_SUSPENDED*/,&m_dwThreadID); 
+        m_hThread = (HANDLE)_beginthreadex(NULL, 0, _ThreadProc,
+                                           (LPVOID)this,
+                                           0 /*CREATE_SUSPENDED*/,
+                                           &m_dwThreadID); 
 
         m_bTerminate = false;
         m_bSuspend = false;
@@ -105,7 +113,7 @@ template<typename T> bool TThread<T>::Start()
     return true;
 }
 
-template<typename T> bool TThread<T>::StartAndWait()
+template<typename T> bool Thread<T>::StartAndWait()
 {
     bool bRet = Start();
     if(bRet)
@@ -113,7 +121,7 @@ template<typename T> bool TThread<T>::StartAndWait()
     return bRet;
 }
 
-template<typename T> bool TThread<T>::Pause()
+template<typename T> bool Thread<T>::Pause()
 {
     if(m_bTerminate)
         return false;
@@ -126,22 +134,22 @@ template<typename T> bool TThread<T>::Pause()
     return true;
 }
 
-template<typename T> bool TThread<T>::IsRunning()
+template<typename T> bool Thread<T>::IsRunning() const
 {
     return m_bIsRunning;
 }
 
-template<typename T> bool TThread<T>::IsTerminated()
+template<typename T> bool Thread<T>::IsTerminated() const
 {
     return m_bTerminate;
 }
 
-template<typename T> bool TThread<T>::IsSuspend()
+template<typename T> bool Thread<T>::IsSuspend() const
 {
     return m_bSuspend;
 }
 
-template<typename T> void TThread<T>::Terminate()
+template<typename T> void Thread<T>::Terminate()
 {
     DWORD dwExitCode;
     ::GetExitCodeThread(m_hThread,&dwExitCode);
@@ -155,14 +163,14 @@ template<typename T> void TThread<T>::Terminate()
     m_bTerminate = true;
 }
 
-template<typename T> void TThread<T>::Exit()
+template<typename T> void Thread<T>::Exit()
 {
     DWORD dwExitCode;
     ::GetExitCodeThread(m_hThread,&dwExitCode);
     if (STILL_ACTIVE == dwExitCode)
     {
         _endthreadex(dwExitCode);
-        ::ExitThread(dwExitCode);
+        ::ExiThread(dwExitCode);
         ::CloseHandle(m_hThread);
         m_hThread = NULL;
     }
@@ -170,26 +178,26 @@ template<typename T> void TThread<T>::Exit()
     m_bTerminate = true;
 }
 
-template<typename T> bool TThread<T>::WaitUntilTerminate(DWORD dwMiliSec)
+template<typename T> bool Thread<T>::WaitUntilTerminate(DWORD dwMiliSec)
 {
-    if(WaitForSingleObject(m_hThread,dwMiliSec) == WAIT_TIMEOUT)
+    if (WAIT_TIMEOUT == WaitForSingleObject(m_hThread,dwMiliSec))
         return false;
     m_bIsRunning = false;
     m_bTerminate = true;
     return true;
 }
 
-template<typename T> void TThread<T>::SetPriority(int nLevel)
+template<typename T> void Thread<T>::SetPriority(int nLevel)
 {
-    ::SetThreadPriority(m_hThread,nLevel); 
+    ::SetThreadPriority(m_hThread, nLevel); 
 }
 
-template<typename T> int TThread<T>::GetPriority()
+template<typename T> int Thread<T>::GetPriority() const
 {
     return ::GetThreadPriority(m_hThread);
 }
 
-template<typename T> void TThread<T>::SpeedUp()
+template<typename T> void Thread<T>::SpeedUp()
 {
     int nOldLevel;
     int nNewLevel;
@@ -213,7 +221,7 @@ template<typename T> void TThread<T>::SpeedUp()
     SetPriority(nNewLevel);
 } 
 
-template<typename T> void TThread<T>::SlowDown()
+template<typename T> void Thread<T>::SlowDown()
 {
     int nOldLevel;
     int nNewLevel;
@@ -237,22 +245,26 @@ template<typename T> void TThread<T>::SlowDown()
     SetPriority(nNewLevel);
 }
 
-template<typename T> void TThread<T>::OnRunning()
+template<typename T> void Thread<T>::OnRunning()
 {
     (m_thObject.*m_pfnOnRunning)();
+        
+    m_bIsRunning = false;
+    m_bTerminate = true;
 }
 
-template<typename T> unsigned __stdcall TThread<T>::_ThreadProc(LPVOID lpParameter)
+template<typename T> unsigned __stdcall Thread<T>::_ThreadProc(LPVOID lpParameter)
 {
-    TThread<T>* pThread = reinterpret_cast<TThread<T>*>(lpParameter);
+    Thread<T>* pThread = reinterpret_cast<Thread<T>*>(lpParameter);
 
     pThread->SetPriority(pThread->m_nInitPriority);
     pThread->m_bIsRunning = true;
     ::SetEvent(pThread->m_hEvent);
     pThread->OnRunning();
+
     return 0;
 }
 
-} // namespace thread
+} // namespace sid2jp2
 
 #endif  // THREAD_H_INCLUDED

@@ -76,6 +76,7 @@ public:
         MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_FILE_PROGRESS, OnTranslationProgress)
         MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_FILE_NEXT, OnTranslationNext)
         MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_FILE_FAILURE, OnTranslationFailure)
+        MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_FINISH, OnTranslationFinish)
 
         // Windows Messages
 		MSG_WM_INITDIALOG(OnInitDialog)
@@ -106,6 +107,7 @@ public:
     //
     // SID2JP2 Translation Message handlers
     //
+    LRESULT OnTranslationFinish(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnTranslationFailure(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnTranslationNext(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnTranslationProgress(UINT, WPARAM, LPARAM, BOOL&);
@@ -158,9 +160,8 @@ private:
     GDALDriverH m_driver;
     std::vector<sid2jp2::dataset_t> m_files;
     
-    typedef thread::TThread<sid2jp2::Translator> TranslatorThread;
-    TranslatorThread* m_worker;
-    sid2jp2::Translator* m_translator;
+    sid2jp2::Translator m_translator;
+    sid2jp2::Thread<sid2jp2::Translator> m_worker;
 
     //
     // User Interface Controls

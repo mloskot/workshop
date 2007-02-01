@@ -30,8 +30,7 @@ using namespace sid2jp2;
 MainDlg::MainDlg() :
     m_mode(eModeNone),
     m_driver(NULL),
-    m_worker(NULL),
-    m_translator(NULL),
+    m_worker(m_translator, &Translator::Run),
     m_waitCursor(FALSE)
 {
     // idle
@@ -242,16 +241,12 @@ LRESULT MainDlg::OnStart(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandle
 
     UISetStateBusy();
 
-
     //
     // Start processing collection of files
     //
 
-    ATLASSERT(NULL == m_worker && NULL == m_translator);
-
-    m_translator = new sid2jp2::Translator(m_hWnd, m_driver, copyOptions, m_files);
-    m_worker = new TranslatorThread((*m_translator), &Translator::Run);
-    m_worker->StartAndWait();
+    m_translator.Configure(m_hWnd, m_driver, copyOptions, m_files);
+    m_worker.StartAndWait();
 
     return 0;
 }
@@ -447,6 +442,28 @@ LRESULT MainDlg::OnOutputOpen(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bH
     return 0;
 }
 
+LRESULT MainDlg::OnTranslationFinish(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+{
+    size_t counter = static_cast<size_t>(LOWORD(lParam));
+    size_t from = static_cast<size_t>(HIWORD(lParam));
+
+    m_worker.WaitUntilTerminate();
+    if (m_worker.IsTerminated())
+    {
+        // TODO - Replace with msg box
+        
+        ATL::CString target(counter > 1 ? _T("files") : _T("file"));
+        ATL::CString msg;
+        msg.Format(_T("Successfully translated %u of %u %s"),
+                   counter, from, target);
+        MessageBox(msg, _T("Finished!"), MB_OK | MB_ICONINFORMATION);
+
+        UISetStateReady();
+    }
+
+    return 0;
+}
+
 LRESULT MainDlg::OnTranslationNext(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
     size_t counter = static_cast<size_t>(wParam);
@@ -636,9 +653,8 @@ void MainDlg::ClearDatasetList()
 BOOL MainDlg::IsTranslating() const
 {
     // non-NULL values indicate the worker thread is active
-    if (NULL != m_worker && NULL != m_translator)
+    if (m_worker.IsRunning())
     {
-        ATLASSERT(m_worker->IsRunning());
         return TRUE;
     }
 
@@ -654,24 +670,19 @@ BOOL MainDlg::StopTranslation()
         ATL::CString msg(_T("Are you sure you want to abort the translation in progress?"));
         if (IDYES == MessageBox(msg, _T("Abort?"), MB_YESNO | MB_ICONQUESTION))
         {
-            m_translator->Terminate();
-            if (!m_worker->WaitUntilTerminate())
+            m_translator.Terminate();
+
+            // TODO: Temporarily test with 30 sec timeout
+            if (!m_worker.WaitUntilTerminate(30000))
             {
                 // Termination failure, force to kill - unsafe!
-                m_worker->Terminate();
+                m_worker.Terminate();
             }
 
-            if (m_worker->IsTerminated())
+            if (m_worker.IsTerminated())
             {
-                // Thread has been terminated
-                delete m_translator;
-                m_translator = NULL;
-
-                delete m_worker;
-                m_worker = NULL;
-
+                // Reset application state
                 UISetStateReady();
-
                 bStopped = TRUE;
             }
         }

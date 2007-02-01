@@ -16,7 +16,7 @@
 
 namespace sid2jp2
 {
-
+extern UINT WM_SID2JP2_FINISH;
 extern UINT WM_SID2JP2_FILE_NEXT;
 extern UINT WM_SID2JP2_FILE_PROGRESS;
 extern UINT WM_SID2JP2_FILE_FAILURE;
@@ -25,8 +25,9 @@ class Translator : private boost::noncopyable
 {
 public:
 
-    Translator(HWND listener, GDALDriverH driver, char** options, std::vector<dataset_t> const& datasets);
+    Translator();
     ~Translator();
+    void Configure(HWND listener, GDALDriverH driver, char** options, std::vector<dataset_t> const& datasets);
     void Run();
     void Terminate();
     bool IsTerminating() const;
@@ -38,8 +39,11 @@ private:
     bool m_running;
     char** m_options;
     GDALDriverH m_driver;
-    std::vector<dataset_t> const& m_datasets;
     
+    //std::vector<dataset_t> const& m_datasets;
+    std::vector<dataset_t> m_datasets;
+    
+    void Reset();
     bool ProcessFile(const char* inputFile, const char* outputFile);
 
 }; // class Translator

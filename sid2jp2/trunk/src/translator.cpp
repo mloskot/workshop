@@ -22,28 +22,38 @@ namespace sid2jp2
 // Register messages used to notify the listener window
 // about translation process.
 //
+UINT WM_SID2JP2_FINISH = ::RegisterWindowMessage(_T("WM_SID2JP2_FINISH"));
 UINT WM_SID2JP2_FILE_NEXT = ::RegisterWindowMessage(_T("WM_SID2JP2_FILE_NEXT"));
 UINT WM_SID2JP2_FILE_PROGRESS = ::RegisterWindowMessage(_T("WM_SID2JP2_FILE_PROGRESS"));
 UINT WM_SID2JP2_FILE_FAILURE = ::RegisterWindowMessage(_T("WM_SID2JP2_FILE_FAILURE"));
 
-Translator::Translator(HWND listener, GDALDriverH driver, char** options,
-                       std::vector<dataset_t> const& datasets)
-                       : m_listener(NULL),
-                         m_running(false),
-                         m_driver(driver),
-                         m_options(options),
-                         m_datasets(datasets)
+Translator::Translator() :
+    m_listener(NULL),
+    m_running(false),
+    m_driver(NULL),
+    m_options(NULL)
 {
-    assert(::IsWindow(listener));
-    assert(NULL != m_driver);
-    assert(NULL != m_options);
-
-    m_listener.Attach(listener);
+    // idle
 }
 
 Translator::~Translator()
 {
     m_listener.Detach();
+}
+
+void Translator::Configure(HWND listener, GDALDriverH driver, char** options,
+                      std::vector<dataset_t> const& datasets)
+{
+    assert(::IsWindow(listener));
+    assert(NULL != driver);
+    assert(NULL != options);
+
+    m_listener.Attach(listener);
+    m_driver = driver;
+    m_options = options;
+
+    // TODO: Optimize
+    m_datasets = datasets;
 }
 
 bool Translator::IsTerminating() const
@@ -58,6 +68,10 @@ HWND Translator::GetListener() const
 
 void Translator::Run()
 {
+    assert(::IsWindow(m_listener));
+    assert(NULL != m_driver);
+    assert(NULL != m_options);
+
     m_running = true;
 
     std::vector<dataset_t>::size_type counter = 0;
@@ -92,11 +106,28 @@ void Translator::Run()
 
         ++counter;
     }
+
+    // Notify about translation finish
+    m_listener.PostMessage(WM_SID2JP2_FINISH, 0,
+        MAKELPARAM(static_cast<WORD>(counter), static_cast<WORD>(m_datasets.size())));
+
+    // Restet internal data.
+    // After this step, it's required to call Configure()
+    // before calling Run() again.
+    Reset();
 }
 
 void Translator::Terminate()
 {
     m_running = false;
+}
+
+void Translator::Reset()
+{
+    m_listener.Detach();
+    m_running = false;
+    m_driver = NULL;
+    m_options = NULL;
 }
 
 bool Translator::ProcessFile(const char* inputFile, const char* outputFile)
@@ -135,7 +166,7 @@ int CPL_STDCALL TranslationCallback(double complete, const char* msg, void* pArg
     Translator* translator = static_cast<Translator*>(pArg);
     if (translator->IsTerminating())
     {
-        // Abort requested
+        // Request GDAL to abort translation
         return false;
     }
     
@@ -161,6 +192,7 @@ int CPL_STDCALL TranslationCallback(double complete, const char* msg, void* pArg
 
     lastComplete = complete;
 
+    // Continue translation
     return true;
 }
 
