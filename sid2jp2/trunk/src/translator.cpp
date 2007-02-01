@@ -15,7 +15,6 @@
 #include <cmath>
 #include <vector>
 
-
 namespace sid2jp2
 {
 
@@ -113,7 +112,7 @@ bool Translator::ProcessFile(const char* inputFile, const char* outputFile)
     if (NULL != srcDS)
     {
         dstDS = GDALCreateCopy(m_driver, outputFile, srcDS, FALSE, m_options,
-                                &TranslationCallback, this);
+                               &TranslationCallback, this);
         if (NULL != dstDS)
         {
             GDALClose(dstDS);

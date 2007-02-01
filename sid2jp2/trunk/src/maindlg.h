@@ -31,8 +31,10 @@ public:
 	
     enum { IDD = IDD_MAINDLG };
 
-	virtual BOOL PreTranslateMessage(MSG* pMsg);
-	virtual BOOL OnIdle();
+    /// Default constructor.
+    /// Constructor does only initialize some of data variables.
+    /// OnInitDialog is responsible for UI initialization.
+    MainDlg();
 
     //
     // Dynamic Data Exchange map
@@ -70,15 +72,15 @@ public:
     //
 	BEGIN_MSG_MAP_EX(MainDlg)
 
-        // SID2JP2 Translation Messages
+        // Custom SID2JP2 Messages
         MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_FILE_PROGRESS, OnTranslationProgress)
         MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_FILE_NEXT, OnTranslationNext)
         MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_FILE_FAILURE, OnTranslationFailure)
 
         // Windows Messages
 		MSG_WM_INITDIALOG(OnInitDialog)
+        MSG_WM_SETCURSOR(OnSetCursor)
         MESSAGE_HANDLER(WM_NOTIFY, OnRatioSpinChanged)
-        //NOTIFY_HANDLER(IDC_OPT_RATIO_SPIN, UDN_DELTAPOS, OnRatioSpinChanged2)
 
         // User-Interface Commands
         COMMAND_HANDLER(IDC_OPT_RATIO_BOX, EN_CHANGE, OnRatioBoxChanged)
@@ -93,8 +95,12 @@ public:
 		COMMAND_ID_HANDLER(IDCANCEL, OnClose)
 		COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAppAbout)
         COMMAND_ID_HANDLER(ID_APP_HELP, OnAppHelp)
+
         CHAIN_MSG_MAP(CUpdateUI<MainDlg>)
     END_MSG_MAP()
+
+    virtual BOOL PreTranslateMessage(MSG* pMsg);
+	virtual BOOL OnIdle();
 
     //
     // SID2JP2 Translation Message handlers
@@ -107,6 +113,7 @@ public:
     // Windows Message and Commands handlers
     //
 	LRESULT OnInitDialog(HWND, LPARAM);
+    LRESULT OnSetCursor(HWND wParam, UINT uHitTest, UINT uMsg);
     LRESULT OnStart(WORD, WORD wID, HWND, BOOL&);
     LRESULT OnStop(WORD, WORD wID, HWND, BOOL&);
 	LRESULT OnClose(WORD, WORD, HWND, BOOL&);
@@ -127,24 +134,14 @@ public:
 private:
 
     //
-    // User Interface Controls
-    //
-    WTL::CEdit m_ctlPathInput;
-    WTL::CEdit m_ctlPathOutput;
-    WTL::CEdit m_ctlRatioBox;
-    WTL::CUpDownCtrl m_ctlRatioSpin;
-    WTL::CStatic m_ctlProgressInfo;
-    WTL::CStatic m_ctlProgressFileInfo;
-    WTL::CProgressBarCtrl m_ctlFileProgress;
-    //WTL::CWaitCursor m_ctlWaitCursor;
-
-    //
     // Internal Data
     //
+
     enum ProcessingMode
     {
+        eModeNone   = -1,
         eModeSingle = 0,
-        eModeBatch = 1,
+        eModeBatch  = 1,
         eModeBatchRecursive = 2
     };
     ProcessingMode m_mode;
@@ -164,7 +161,19 @@ private:
     sid2jp2::Translator* m_translator;
 
     //
-    // Private Function Members
+    // User Interface Controls
+    //
+    WTL::CEdit m_ctlPathInput;
+    WTL::CEdit m_ctlPathOutput;
+    WTL::CEdit m_ctlRatioBox;
+    WTL::CUpDownCtrl m_ctlRatioSpin;
+    WTL::CStatic m_ctlProgressInfo;
+    WTL::CStatic m_ctlProgressFileInfo;
+    WTL::CProgressBarCtrl m_ctlFileProgress;
+    WTL::CWaitCursor m_waitCursor;
+
+    //
+    // Private Functions
     //
     void UISetStateReady();
     void UISetStateBusy();
@@ -174,7 +183,6 @@ private:
     void UIResetPathBoxes();
     void CloseDialog(int nVal);
     void ProcessRatioSpinChange(LPNMUPDOWN pNMUD, UINT nID);
-
 
     void ClearDatasetList();
     BOOL InitializeGDALDriver();

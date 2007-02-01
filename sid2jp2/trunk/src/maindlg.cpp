@@ -27,6 +27,16 @@
 
 using namespace sid2jp2;
 
+MainDlg::MainDlg() :
+    m_mode(eModeNone),
+    m_driver(NULL),
+    m_worker(NULL),
+    m_translator(NULL),
+    m_waitCursor(FALSE)
+{
+    // idle
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // Windows Message Handlers
 /////////////////////////////////////////////////////////////////////////////
@@ -68,9 +78,6 @@ LRESULT MainDlg::OnInitDialog(HWND /*hWnd*/, LPARAM /*lParam*/)
 
     // Initialize data
     m_mode = eModeSingle;
-    m_driver = NULL;
-    m_translator = NULL;
-    m_worker = NULL;
 
     // Initialize GDAL environment
     GDALAllRegister();
@@ -87,8 +94,27 @@ LRESULT MainDlg::OnInitDialog(HWND /*hWnd*/, LPARAM /*lParam*/)
 	return TRUE;
 }
 
+LRESULT MainDlg::OnSetCursor(HWND wParam, UINT uHitTest, UINT uMsg)
+{
+    if (NULL != m_worker && NULL != m_translator)
+    {
+        ATLASSERT(m_worker->IsRunning());
+
+        m_waitCursor.Restore();
+        m_waitCursor.Set();
+        
+        SetMsgHandled(TRUE);
+        return TRUE;
+    }
+
+    SetMsgHandled(FALSE);
+    return FALSE;
+}
+
 LRESULT MainDlg::OnStart(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 {
+    m_waitCursor.Set();
+
     BOOL ret = DoDataExchange(DDX_SAVE);
     ATLASSERT(TRUE == ret);
 
@@ -197,7 +223,7 @@ LRESULT MainDlg::OnStart(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL&
     else
     {
         // NEVER SHOULD GET HERE
-        assert("[sid2jp2] Unknown processing mode");
+        ATLASSERT("[sid2jp2] Unknown processing mode");
     }
 
     //
@@ -213,7 +239,7 @@ LRESULT MainDlg::OnStart(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL&
     // Start processing collection of files
     //
 
-    assert(NULL == m_worker && NULL == m_translator);
+    ATLASSERT(NULL == m_worker && NULL == m_translator);
 
     m_translator = new sid2jp2::Translator(m_hWnd, m_driver, copyOptions, m_files);
     m_worker = new TranslatorThread((*m_translator), &Translator::Run);
@@ -228,7 +254,7 @@ LRESULT MainDlg::OnStop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BO
     if (NULL != m_worker && NULL != m_translator)
     {
         // No suspension or pause is expected, only terminated|running
-        assert(m_worker->IsRunning());
+        ATLASSERT(m_worker->IsRunning());
 
         m_translator->Terminate();
         if (!m_worker->WaitUntilTerminate())
