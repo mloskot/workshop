@@ -450,13 +450,14 @@ LRESULT MainDlg::OnTranslationFinish(UINT uMsg, WPARAM wParam, LPARAM lParam, BO
     m_worker.WaitUntilTerminate();
     if (m_worker.IsTerminated())
     {
-        // TODO - Replace with msg box
-        
-        ATL::CString target(counter > 1 ? _T("files") : _T("file"));
-        ATL::CString msg;
-        msg.Format(_T("Successfully translated %u of %u %s"),
-                   counter, from, target);
-        MessageBox(msg, _T("Finished!"), MB_OK | MB_ICONINFORMATION);
+        if (counter > 0)
+        {
+            ATL::CString target(counter > 1 ? _T("files") : _T("file"));
+            ATL::CString msg;
+            msg.Format(_T("Successfully translated %u of %u %s"),
+                counter, from, target);
+            MessageBox(msg, _T("Finished!"), MB_OK | MB_ICONINFORMATION);
+        }
 
         UISetStateReady();
     }

@@ -103,8 +103,12 @@ void Translator::Run()
             m_running = false;
             //error::file_translation_failure(m_hWnd, fileInput);
         }
-
-        ++counter;
+        
+        // Don't count aborted file
+        if (m_running)
+        {
+            ++counter;
+        }
     }
 
     // Notify about translation finish
