@@ -228,8 +228,6 @@ LRESULT MainDlg::OnStart(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL&
     // Set busy state
     //
 
-    // TODO: - Add busy state
-
     UISetStateBusy();
 
 
@@ -248,7 +246,6 @@ LRESULT MainDlg::OnStart(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL&
 
 LRESULT MainDlg::OnStop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 {
-    // Non-NULL values indicate the worker thread is active
     if (IsTranslating())
     {
         m_translator->Terminate();
@@ -504,9 +501,15 @@ void MainDlg::UISetStateReady()
     ATLASSERT(::IsWindow(m_ctlProgressInfo));
     ATLASSERT(::IsWindow(m_ctlProgressFileInfo));
 
-    UIEnable(IDC_START, true);
+    if (::IsWindow(GetDlgItem(IDC_STOP)))
+    {
+        WTL::CButton btnStop(GetDlgItem(IDC_STOP));
+        btnStop.SetDlgCtrlID(IDC_START);
+        btnStop.SetWindowText(_T("Start"));
+    }
+
     UIEnable(IDC_CLOSE, true);
-    UIEnable(IDC_STOP, false);
+    UIEnable(IDC_START, true);
 
     UISetCheck(IDC_MODE_BATCH_RECURSIVE, false);
     UISetRadio(IDC_MODE_BATCH, false, TRUE);
@@ -538,8 +541,14 @@ void MainDlg::UISetStateReady()
 
 void MainDlg::UISetStateBusy()
 {
-    UIEnable(IDC_START, false);
-    UIEnable(IDC_CLOSE, false);
+    if (::IsWindow(GetDlgItem(IDC_START)))
+    {
+        WTL::CButton btnStart(GetDlgItem(IDC_START));
+        btnStart.SetDlgCtrlID(IDC_STOP);
+        btnStart.SetWindowText(_T("Stop"));
+    }
+
+    UIEnable(IDC_CLOSE, true);
     UIEnable(IDC_STOP, true);
 }
 
@@ -612,6 +621,7 @@ void MainDlg::ClearDatasetList()
 
 BOOL MainDlg::IsTranslating() const
 {
+    // non-NULL values indicate the worker thread is active
     if (NULL != m_worker && NULL != m_translator)
     {
         ATLASSERT(m_worker->IsRunning());

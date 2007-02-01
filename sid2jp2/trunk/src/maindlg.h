@@ -163,6 +163,7 @@ private:
     //
     // User Interface Controls
     //
+
     WTL::CEdit m_ctlPathInput;
     WTL::CEdit m_ctlPathOutput;
     WTL::CEdit m_ctlRatioBox;
@@ -175,6 +176,7 @@ private:
     //
     // Private Functions
     //
+
     void UISetStateReady();
     void UISetStateBusy();
 
