@@ -185,6 +185,7 @@ private:
     void ProcessRatioSpinChange(LPNMUPDOWN pNMUD, UINT nID);
 
     void ClearDatasetList();
+    BOOL IsTranslating() const;
     BOOL InitializeGDALDriver();
     BOOL ProcessFile(const char* inputFile, const char* outputFile, char** options);
 

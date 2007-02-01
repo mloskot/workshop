@@ -96,10 +96,8 @@ LRESULT MainDlg::OnInitDialog(HWND /*hWnd*/, LPARAM /*lParam*/)
 
 LRESULT MainDlg::OnSetCursor(HWND wParam, UINT uHitTest, UINT uMsg)
 {
-    if (NULL != m_worker && NULL != m_translator)
+    if (IsTranslating())
     {
-        ATLASSERT(m_worker->IsRunning());
-
         m_waitCursor.Restore();
         m_waitCursor.Set();
         
@@ -251,11 +249,8 @@ LRESULT MainDlg::OnStart(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL&
 LRESULT MainDlg::OnStop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 {
     // Non-NULL values indicate the worker thread is active
-    if (NULL != m_worker && NULL != m_translator)
+    if (IsTranslating())
     {
-        // No suspension or pause is expected, only terminated|running
-        ATLASSERT(m_worker->IsRunning());
-
         m_translator->Terminate();
         if (!m_worker->WaitUntilTerminate())
         {
@@ -613,6 +608,17 @@ void MainDlg::ClearDatasetList()
 {
     std::vector<dataset_t> empty;
     m_files.swap(empty);
+}
+
+BOOL MainDlg::IsTranslating() const
+{
+    if (NULL != m_worker && NULL != m_translator)
+    {
+        ATLASSERT(m_worker->IsRunning());
+        return TRUE;
+    }
+
+    return FALSE;
 }
 
 BOOL MainDlg::InitializeGDALDriver()
