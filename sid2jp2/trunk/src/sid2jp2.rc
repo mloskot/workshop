@@ -60,15 +60,19 @@ IDR_MAINFRAME           ICON                    "res\\sid2jp2.ico"
 // Dialog
 //
 
-IDD_ABOUTBOX DIALOG  0, 0, 187, 102
+IDD_ABOUTBOX DIALOGEX 0, 0, 187, 143
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "About"
-FONT 8, "MS Sans Serif"
+CAPTION "About sid2jp2"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,130,81,50,14
-    CTEXT           "sid2jp2 Application v1.0\n\n(c) Copyright 2006",IDC_STATIC,25,57,78,32
-    ICON            IDR_MAINFRAME,IDC_STATIC,55,26,18,20
-    GROUPBOX        "",IDC_STATIC,7,7,115,88
+    DEFPUSHBUTTON   "OK",IDOK,69,122,50,14
+    CTEXT           "sid2jp2 v0.6 (Beta)\n\nMrSID to JPEG2000 Translator",IDC_STATIC,41,15,131,26
+    ICON            IDR_MAINFRAME,IDC_STATIC,15,15,20,20
+    GROUPBOX        "",IDC_STATIC,7,7,173,111
+    LTEXT           "Copyright (C) 2007 Mateusz Loskot",IDC_STATIC,15,47,157,8
+    LTEXT           "License: Boost License, BSD or LGPL",IDC_STATIC,15,59,157,8
+    LTEXT           "GDAL Information:",IDC_STATIC,15,73,157,8
+    LTEXT           "Here info about GDAL version",IDC_GDALINFO,41,86,131,8
 END
 
 IDD_MAINDLG DIALOGEX 0, 0, 300, 218
@@ -113,8 +117,20 @@ BEGIN
     BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 180
+        VERTGUIDE, 15
+        VERTGUIDE, 41
+        VERTGUIDE, 172
         TOPMARGIN, 7
-        BOTTOMMARGIN, 95
+        BOTTOMMARGIN, 136
+        HORZGUIDE, 15
+        HORZGUIDE, 41
+        HORZGUIDE, 47
+        HORZGUIDE, 55
+        HORZGUIDE, 59
+        HORZGUIDE, 67
+        HORZGUIDE, 73
+        HORZGUIDE, 81
+        HORZGUIDE, 86
     END
 
     IDD_MAINDLG, DIALOG

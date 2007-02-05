@@ -13,8 +13,16 @@ LRESULT AboutDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 {
 	CenterWindow(GetParent());
 
+    // Get GDAL version info
     const char* pszGDALVersion = ::GDALVersionInfo("RELEASE_NAME");
-    ATL::CString msg(pszGDALVersion);
+    ATL::CString gdalInfo;
+    gdalInfo = CA2T(pszGDALVersion);
+
+    // Display GDAL version info
+    WTL::CStatic ctlInfo;
+    ctlInfo.Attach(GetDlgItem(IDC_GDALINFO));
+    ctlInfo.SetWindowText(gdalInfo);
+    ctlInfo.Detach();
 
 	return TRUE;
 }

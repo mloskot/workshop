@@ -27,6 +27,7 @@
 #define IDC_START                       1015
 #define IDC_STOP                        1016
 #define IDC_CLOSE                       1017
+#define IDC_GDALINFO                    1017
 
 // Next default values for new objects
 // 
@@ -34,7 +35,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        204
 #define _APS_NEXT_COMMAND_VALUE         32772
-#define _APS_NEXT_CONTROL_VALUE         1017
+#define _APS_NEXT_CONTROL_VALUE         1018
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
