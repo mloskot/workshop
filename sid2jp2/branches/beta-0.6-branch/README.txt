@@ -21,7 +21,7 @@ where X.Y.Z is version number of FWTools.
 Project:
 ---------------------------------------------------------------
 
-SVN: http://mloskot.devjavu.com/projects/mloskot/browser/sid2jp2
+Subversion: http://mloskot.devjavu.com/projects/mloskot/browser/sid2jp2
 Tickets: http://mloskot.devjavu.com
 
 --
