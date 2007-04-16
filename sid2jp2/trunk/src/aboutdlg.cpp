@@ -21,6 +21,7 @@ LRESULT AboutDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
     // Display GDAL version info
     WTL::CStatic ctlInfo;
     ctlInfo.Attach(GetDlgItem(IDC_GDALINFO));
+    ATLASSERT(NULL != ctlInfo);
     ctlInfo.SetWindowText(gdalInfo);
     ctlInfo.Detach();
 
