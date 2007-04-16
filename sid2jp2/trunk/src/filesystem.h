@@ -5,6 +5,10 @@
 #ifndef SID2JP2_FILESYSTEM_H_INCLUDED
 #define SID2JP2_FILESYSTEM_H_INCLUDED
 
+#ifdef _MSC_VER
+#pragma warning(disable:4307)
+#endif
+
 // std
 #include <cassert>
 #include <algorithm>
@@ -14,6 +18,7 @@
 #include <utility>
 #include <vector>
 // winstl
+#include <winstl.h>
 #include <winstl/findfile_sequence.hpp>
 #include <winstl/directory_functions.hpp>
 #include <winstl/filesystem_traits.hpp>
@@ -69,6 +74,20 @@ void generate_file_list_recurse(std::string const& basedir,
         // Process next directory
         generate_file_list_recurse(current.get_path(), ext, out);
     }
+}
+
+template <typename T>
+unsigned long get_file_size(T const& file)
+{
+    typedef typename winstl::filesystem_traits<T::traits_type::char_type> ft_traits;
+    ft_traits::stat_data_type st;
+
+    unsigned long sz = 0;
+    if (ft_traits::stat(file.c_str(), &st))
+    {
+        sz = (st.nFileSizeHigh * (MAXDWORD + 1)) + st.nFileSizeLow;
+    }
+    return sz;
 }
 
 void generate_dataset_list(std::string const& input_dir,
