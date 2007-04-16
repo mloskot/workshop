@@ -9,16 +9,20 @@
 		AdditionalIncludeDirectories="$(BOOST_DIR);$(STLSOFT_DIR)"
 	/>
 	<UserMacro
+		Name="FWTOOLS_DIR"
+		Value="C:\Program Files\FWTools1.2.3"
+	/>
+	<UserMacro
 		Name="GDAL_BIN_DIR"
-		Value="C:\Program Files\FWTools1.1.3\bin"
+		Value="$(FWTOOLS_DIR)\bin"
 	/>
 	<UserMacro
 		Name="GDAL_INCLUDE_DIR"
-		Value="C:\Program Files\FWTools1.1.3\include"
+		Value="$(FWTOOLS_DIR)\include"
 	/>
 	<UserMacro
 		Name="GDAL_LIB_DIR"
-		Value="C:\Program Files\FWTools1.1.3\lib"
+		Value="$(FWTOOLS_DIR)\lib"
 	/>
 	<UserMacro
 		Name="GDAL_LIB"
@@ -26,10 +30,10 @@
 	/>
 	<UserMacro
 		Name="BOOST_DIR"
-		Value="C:\Boost\include\boost-1_33_1"
+		Value="C:\usr\boost-1.33.1\include\boost-1_33_1"
 	/>
 	<UserMacro
 		Name="STLSOFT_DIR"
-		Value="C:\lib\stlsoft-1.8.9"
+		Value="C:\usr\stlsoft-1.8.9"
 	/>
 </VisualStudioPropertySheet>

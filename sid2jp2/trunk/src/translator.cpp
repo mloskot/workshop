@@ -2,7 +2,6 @@
 /////////////////////////////////////////////////////////////////////////////
 //
 /////////////////////////////////////////////////////////////////////////////
-
 #include "stdafx.h"
 #include "translator.h"
 #include "dataset.h"
@@ -42,7 +41,7 @@ Translator::~Translator()
 }
 
 void Translator::Configure(HWND listener, GDALDriverH driver, char** options,
-                      std::vector<dataset_t> const& datasets)
+                           std::vector<dataset_t> const& datasets)
 {
     assert(::IsWindow(listener));
     assert(NULL != driver);

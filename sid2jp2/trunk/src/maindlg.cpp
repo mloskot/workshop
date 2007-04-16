@@ -11,6 +11,7 @@
 #include "error.h"
 #include "filesystem.h"
 #include "translator.h"
+#include "mrsidimageinfo.h"
 // gdal
 #include <gdal.h>
 #include <cpl_error.h>
@@ -30,8 +31,7 @@ using namespace sid2jp2;
 MainDlg::MainDlg() :
     m_mode(eModeNone),
     m_driver(NULL),
-    m_worker(m_translator, &Translator::Run),
-    m_waitCursor(FALSE)
+    m_worker(m_translator, &Translator::Run)
 {
     // idle
 }
@@ -105,148 +105,150 @@ void MainDlg::OnSysCommand(UINT nCode, WTL::CPoint /*point*/)
         break;
     }
 }
-LRESULT MainDlg::OnSetCursor(HWND wParam, UINT uHitTest, UINT uMsg)
-{
-    if (IsTranslating())
-    {
-        m_waitCursor.Restore();
-        m_waitCursor.Set();
-        
-        SetMsgHandled(TRUE);
-        return TRUE;
-    }
-
-    SetMsgHandled(FALSE);
-    return FALSE;
-}
 
 LRESULT MainDlg::OnStart(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
-    m_waitCursor.Set();
-
-    BOOL ret = DoDataExchange(DDX_SAVE);
-    ATLASSERT(TRUE == ret);
-
-    // Common message buffor
-    ATL::CString msg;
-    UIResetProgressBar();
-
-    //
-    // Initialize output driver
-    //
-    ret = InitializeGDALDriver();
-    if (!ret)
-        return 0;
-
-    //
-    // Collect translation options
-    //
-    std::string targetRatio;
     try
     {
-        ATL::CString buf;
-        m_ctlRatioBox.GetWindowText(buf);
-        int ratio = std::wcstol(buf, NULL, 10);
 
-        // Calculate compression percentage
-        int perc = (100 - (100 / ratio));
-        targetRatio = boost::lexical_cast<std::string>(perc);
-    }
-    catch(boost::bad_lexical_cast& e)
-    {
-        std::string errMsg(e.what());
-        MessageBox(_T("Invalid value of Target Compression Ratio!"),
-                   _T("Error!"), MB_OK | MB_ICONERROR);
-        return 0;
-    }
-
-    char** copyOptions = NULL;
-    copyOptions = ::CSLSetNameValue(copyOptions, "TARGET", targetRatio.c_str());
-    copyOptions = ::CSLSetNameValue(copyOptions, "LARGE_OK", "YES");
-
-    if (eModeSingle == m_mode && m_files.size() > 1)
-    {
-        msg.Format(_T("There are too many files selected for single mode processing!!"));
-        MessageBox(msg, _T("Error!"), MB_OK | MB_ICONERROR);
-        return 0;
-    }
-
-    //
-    // Generate list of input MrSID files
-    //
-
-    // TODO: mloskot - replace hardcoded strings with resources
-
-    m_ctlProgressInfo.SetWindowText(_T("Generating input files list..."));
-
-    // Prepare dataset collection
-    ClearDatasetList();
-
-    if (m_pathInput.IsEmpty() || m_pathOutput.IsEmpty())
-    {
-        m_ctlProgressInfo.SetWindowText(_T("Ready!"));
-        msg.Format(_T("Please, select source and target dataset!"));
-        MessageBox(msg, _T("Error!"), MB_OK | MB_ICONSTOP);
-        return 0;
-    }
-
-    std::string inputPath = CT2A(m_pathInput);
-    std::string outputPath = CT2A(m_pathOutput);
-
-    if (eModeSingle == m_mode)
-    {
-        // Display processing directory
-        ATL::CPath baseInputPath(m_pathInput);
-        ret = baseInputPath.RemoveFileSpec();
+        BOOL ret = DoDataExchange(DDX_SAVE);
         ATLASSERT(TRUE == ret);
-        msg.Format(_T("Directory: %s"), baseInputPath);
-        m_ctlProgressFileInfo.SetWindowText(msg);
 
-        if (!inputPath.empty() && !outputPath.empty())
+        // Common message buffor
+        ATL::CString msg;
+        UIResetProgressBar();
+
+        //
+        // Initialize output driver
+        //
+        ret = InitializeGDALDriver();
+        if (!ret)
+            return 0;
+
+        //
+        // Collect translation options
+        //
+        std::string targetRatio;
+        try
         {
-            m_files.push_back(std::make_pair(inputPath, outputPath));
+            ATL::CString buf;
+            m_ctlRatioBox.GetWindowText(buf);
+            int ratio = std::wcstol(buf, NULL, 10);
+
+            // Calculate compression percentage
+            int perc = (100 - (100 / ratio));
+            targetRatio = boost::lexical_cast<std::string>(perc);
         }
+        catch(boost::bad_lexical_cast& e)
+        {
+            std::string errMsg(e.what());
+            MessageBox(_T("Invalid value of Target Compression Ratio!"),
+                _T("Error!"), MB_OK | MB_ICONERROR);
+            return 0;
+        }
+
+        char** copyOptions = NULL;
+        copyOptions = ::CSLSetNameValue(copyOptions, "TARGET", targetRatio.c_str());
+        copyOptions = ::CSLSetNameValue(copyOptions, "LARGE_OK", "YES");
+
+        if (eModeSingle == m_mode && m_files.size() > 1)
+        {
+            msg.Format(_T("There are too many files selected for single mode processing!!"));
+            MessageBox(msg, _T("Error!"), MB_OK | MB_ICONERROR);
+            return 0;
+        }
+
+        //
+        // Generate list of pairs of input/output MrSID images
+        //
+
+        // TODO: mloskot - replace hardcoded strings with resources
+
+        m_ctlProgressInfo.SetWindowText(_T("Generating input files list..."));
+
+        // Prepare dataset collection
+        ClearDatasetList();
+
+        if (m_pathInput.IsEmpty() || m_pathOutput.IsEmpty())
+        {
+            m_ctlProgressInfo.SetWindowText(_T("Ready!"));
+            msg.Format(_T("Please, select source and target dataset!"));
+            MessageBox(msg, _T("Error!"), MB_OK | MB_ICONSTOP);
+            return 0;
+        }
+
+        std::string inputPath = CT2A(m_pathInput);
+        std::string outputPath = CT2A(m_pathOutput);
+
+        if (eModeSingle == m_mode)
+        {
+            // Display processing directory
+            ATL::CPath baseInputPath(m_pathInput);
+            ret = baseInputPath.RemoveFileSpec();
+            ATLASSERT(TRUE == ret);
+            msg.Format(_T("Directory: %s"), baseInputPath);
+            m_ctlProgressFileInfo.SetWindowText(msg);
+
+            if (!inputPath.empty() && !outputPath.empty())
+            {
+                m_files.push_back(std::make_pair(inputPath, outputPath));
+            }
+        }
+        else if (eModeBatch == m_mode)
+        {
+            m_ctlProgressInfo.SetWindowText(_T("Generating list of files..."));
+
+            std::vector<std::string> tmpList;
+            fs::generate_file_list(inputPath, "*.sid", tmpList);
+
+            // Rebuild basic list to colletion of input/output paths
+            fs::generate_dataset_list(inputPath, tmpList, outputPath, m_files, ".jp2", false);
+
+        }
+        else if (eModeBatchRecursive == m_mode)
+        {
+            m_ctlProgressInfo.SetWindowText(_T("Generating list of files in recursive mode..."));
+
+            std::vector<std::string> tmpList;
+            fs::generate_file_list_recurse(inputPath, "*.sid", tmpList);
+
+            // Rebuild basic list to colletion of input/output paths
+            fs::generate_dataset_list(inputPath, tmpList, outputPath, m_files, ".jp2", true);
+
+        }
+        else
+        {
+            // NEVER SHOULD GET HERE
+            ATLASSERT("[sid2jp2] Unknown processing mode");
+        }
+
+        //
+        // Generated and assign Target Compression Rations per image
+        //
+
+
+        // 1. Input ratio
+        // 2. User's ratio
+
+        //
+        // Set busy state
+        //
+
+        UISetStateBusy();
+
+        //
+        // Start processing collection of files
+        //
+
+        m_translator.Configure(m_hWnd, m_driver, copyOptions, m_files);
+        m_worker.StartAndWait();
+
     }
-    else if (eModeBatch == m_mode)
+    catch (std::exception const& e)
     {
-        m_ctlProgressInfo.SetWindowText(_T("Generating list of files..."));
-
-        std::vector<std::string> tmpList;
-        fs::generate_file_list(inputPath, "*.sid", tmpList);
-
-        // Rebuild basic list to colletion of input/output paths
-        fs::generate_dataset_list(inputPath, tmpList, outputPath, m_files, ".jp2", false);
-
+        ATL::CString msg(CA2T(e.what()));
+        MessageBox(msg, _T("Error!"), MB_OK | MB_ICONSTOP);
     }
-    else if (eModeBatchRecursive == m_mode)
-    {
-        m_ctlProgressInfo.SetWindowText(_T("Generating list of files in recursive mode..."));
-
-        std::vector<std::string> tmpList;
-        fs::generate_file_list_recurse(inputPath, "*.sid", tmpList);
-
-        // Rebuild basic list to colletion of input/output paths
-        fs::generate_dataset_list(inputPath, tmpList, outputPath, m_files, ".jp2", true);
-
-    }
-    else
-    {
-        // NEVER SHOULD GET HERE
-        ATLASSERT("[sid2jp2] Unknown processing mode");
-    }
-
-    //
-    // Set busy state
-    //
-
-    UISetStateBusy();
-
-    //
-    // Start processing collection of files
-    //
-
-    m_translator.Configure(m_hWnd, m_driver, copyOptions, m_files);
-    m_worker.StartAndWait();
 
     return 0;
 }
@@ -265,7 +267,7 @@ LRESULT MainDlg::OnClose(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandle
     {
         if (!StopTranslation())
         {
-            // Close action canceled 
+            // Close action aborted
             return 0;
         }
     }
@@ -320,6 +322,14 @@ LRESULT MainDlg::OnModeRecursiveChanged(WORD wNotifyCode, WORD wID, HWND hWndCtl
     return 0;
 }
 
+LRESULT MainDlg::OnRatioFromInputChanged(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+{
+    // Button checked, Target Compression Ratio is set from input
+    BOOL bActivateInput = ::IsDlgButtonChecked(IDC_OPT_RATIO_FROM_INPUT);
+    UISetStateOptions(bActivateInput);
+
+    return 0;
+}
 LRESULT MainDlg::OnRatioSpinChanged(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
     LPNMHDR pNMHDR = NULL;
@@ -380,6 +390,15 @@ LRESULT MainDlg::OnInputOpen(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHa
             
             m_ctlPathInput.SetWindowText(m_pathInput);
             m_ctlPathOutput.SetWindowText(m_pathOutput);
+
+            // Read and display image compression ratio
+            std::string filePath = CT2A(m_pathInput);
+            MrSidImageInfo sidInfo(filePath);
+            int nInputRatio = sidInfo.GetCompressionRatio();
+
+            ATL::CString msg;
+            msg.Format(_T("%d"), nInputRatio);
+            m_ctlInputRatioBox.SetWindowText(msg);
 
             UIEnable(IDC_START, true);
         }
@@ -522,6 +541,7 @@ void MainDlg::UISetStateReady()
 {
     ATLASSERT(::IsWindow(m_ctlPathInput));
     ATLASSERT(::IsWindow(m_ctlPathOutput));
+    ATLASSERT(::IsWindow(m_ctlInputRatioBox));
     ATLASSERT(::IsWindow(m_ctlRatioBox));
     ATLASSERT(::IsWindow(m_ctlRatioSpin));
     ATLASSERT(::IsWindow(m_ctlFileProgress));
@@ -546,7 +566,8 @@ void MainDlg::UISetStateReady()
     UIEnable(IDC_MODE_BATCH, true);
     UIEnable(IDC_MODE_BATCH_RECURSIVE, false);
 
-    // Initialize target ratio spin button
+    // Initialize options group
+    m_ctlInputRatioBox.SetWindowText(_T("0"));
     m_ctlRatioSpin.SetBuddy(m_ctlRatioBox);
     m_ctlRatioSpin.SetRange(0, 100);
     m_ctlRatioSpin.SetPos(20);
@@ -554,6 +575,9 @@ void MainDlg::UISetStateReady()
     ATL::CString buf;
     buf.Format(_T("%02d"), m_ctlRatioSpin.GetPos());
     m_ctlRatioBox.SetWindowText(buf);
+
+    UISetCheck(IDC_OPT_RATIO_FROM_INPUT, true);
+    UISetStateOptions(true);
 
     // Initialize input/output paths
     UISetStatePathBoxes(false);
@@ -599,6 +623,23 @@ void MainDlg::UISetStatePathBoxes(BOOL bBusy)
         m_ctlPathInput.SetWindowText(_T(""));
         m_ctlPathOutput.SetWindowText(_T(""));
     }
+}
+
+void MainDlg::UISetStateOptions(BOOL bInputRatioActive)
+{
+    BOOL bInputEnable = bInputRatioActive;
+    BOOL bTargetEnable = ! bInputRatioActive;
+
+    // Input Compression Ratio
+    UIEnable(IDC_OPT_INPUT_RATIO_BOX, bInputEnable);
+    UIEnable(IDC_OPT_INPUT_RATIO_LABEL, bInputEnable);
+    UIEnable(IDC_OPT_INPUT_RATIO_SUFFIX_LABEL, bInputEnable);
+
+    // Target Compression Ratio
+    UIEnable(IDC_OPT_TARGET_RATIO_LABEL, bTargetEnable);
+    UIEnable(IDC_OPT_TARGET_RATIO_BOX, bTargetEnable);
+    UIEnable(IDC_OPT_TARGET_RATIO_SPIN, bTargetEnable);
+    UIEnable(IDC_OPT_TARGET_RATIO_SUFFIX_LABEL, bTargetEnable);
 }
 
 void MainDlg::UIResetProgressBar()

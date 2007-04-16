@@ -13,6 +13,7 @@
 #include <gdal.h>
 // std
 #include <cwchar>
+#include <map>
 #include <string>
 #include <vector>
 #include <utility>
@@ -42,8 +43,9 @@ public:
     BEGIN_DDX_MAP(MainDlg)
         DDX_CONTROL_HANDLE(IDC_PATH_INPUT, m_ctlPathInput)
         DDX_CONTROL_HANDLE(IDC_PATH_OUTPUT, m_ctlPathOutput)
-        DDX_CONTROL_HANDLE(IDC_OPT_RATIO_SPIN, m_ctlRatioSpin)
-        DDX_CONTROL_HANDLE(IDC_OPT_RATIO_BOX, m_ctlRatioBox)
+        DDX_CONTROL_HANDLE(IDC_OPT_INPUT_RATIO_BOX, m_ctlInputRatioBox)
+        DDX_CONTROL_HANDLE(IDC_OPT_TARGET_RATIO_SPIN, m_ctlRatioSpin)
+        DDX_CONTROL_HANDLE(IDC_OPT_TARGET_RATIO_BOX, m_ctlRatioBox)
         DDX_CONTROL_HANDLE(IDC_PROGRESS_PER_FILE, m_ctlFileProgress)
         DDX_CONTROL_HANDLE(IDC_PROGRESS_INFO, m_ctlProgressInfo)
         DDX_CONTROL_HANDLE(IDC_PROGRESS_FILE_INFO, m_ctlProgressFileInfo)
@@ -65,6 +67,14 @@ public:
         UPDATE_ELEMENT(IDC_OPEN_OUTPUT, UPDUI_CHILDWINDOW)
         UPDATE_ELEMENT(IDC_PATH_INPUT, UPDUI_CHILDWINDOW)
         UPDATE_ELEMENT(IDC_PATH_OUTPUT, UPDUI_CHILDWINDOW)
+        UPDATE_ELEMENT(IDC_OPT_RATIO_FROM_INPUT, UPDUI_CHILDWINDOW)
+        UPDATE_ELEMENT(IDC_OPT_INPUT_RATIO_BOX, UPDUI_CHILDWINDOW)
+        UPDATE_ELEMENT(IDC_OPT_INPUT_RATIO_LABEL, UPDUI_CHILDWINDOW)
+        UPDATE_ELEMENT(IDC_OPT_INPUT_RATIO_SUFFIX_LABEL, UPDUI_CHILDWINDOW)
+        UPDATE_ELEMENT(IDC_OPT_TARGET_RATIO_BOX, UPDUI_CHILDWINDOW)
+        UPDATE_ELEMENT(IDC_OPT_TARGET_RATIO_SPIN, UPDUI_CHILDWINDOW)
+        UPDATE_ELEMENT(IDC_OPT_TARGET_RATIO_LABEL, UPDUI_CHILDWINDOW)
+        UPDATE_ELEMENT(IDC_OPT_TARGET_RATIO_SUFFIX_LABEL, UPDUI_CHILDWINDOW)
 	END_UPDATE_UI_MAP()
 
     //
@@ -81,12 +91,12 @@ public:
         // Windows Messages
 		MSG_WM_INITDIALOG(OnInitDialog)
         MSG_WM_SYSCOMMAND(OnSysCommand)
-        MSG_WM_SETCURSOR(OnSetCursor)
         MESSAGE_HANDLER(WM_NOTIFY, OnRatioSpinChanged)
 
         // User-Interface Commands
-        COMMAND_HANDLER(IDC_OPT_RATIO_BOX, EN_CHANGE, OnRatioBoxChanged)
-        COMMAND_HANDLER(IDC_OPT_RATIO_BOX, EN_SETFOCUS, OnRatioBoxFocus)
+        COMMAND_HANDLER(IDC_OPT_TARGET_RATIO_BOX, EN_CHANGE, OnRatioBoxChanged)
+        COMMAND_HANDLER(IDC_OPT_TARGET_RATIO_BOX, EN_SETFOCUS, OnRatioBoxFocus)
+        COMMAND_HANDLER(IDC_OPT_RATIO_FROM_INPUT, BN_CLICKED, OnRatioFromInputChanged)
         COMMAND_HANDLER(IDC_MODE_BATCH_RECURSIVE, BN_CLICKED, OnModeRecursiveChanged)
         COMMAND_RANGE_HANDLER(IDC_MODE_SINGLE, IDC_MODE_BATCH, OnModeChanged)
         COMMAND_ID_HANDLER(IDC_OPEN_INPUT, OnInputOpen)
@@ -117,19 +127,24 @@ public:
     //
 	LRESULT OnInitDialog(HWND, LPARAM);
     void OnSysCommand(UINT, WTL::CPoint);
-    LRESULT OnSetCursor(HWND, UINT, UINT);
+
     LRESULT OnStart(WORD, WORD wID, HWND, BOOL&);
     LRESULT OnStop(WORD, WORD wID, HWND, BOOL&);
-	LRESULT OnClose(WORD, WORD, HWND, BOOL&);
-    LRESULT OnAppAbout(WORD, WORD, HWND, BOOL& );
-    LRESULT OnAppHelp(WORD, WORD, HWND, BOOL& );
+	
+    LRESULT OnClose(WORD, WORD, HWND, BOOL&);
+    LRESULT OnAppAbout(WORD, WORD, HWND, BOOL&);
+    LRESULT OnAppHelp(WORD, WORD, HWND, BOOL&);
+    
     LRESULT OnInputOpen(WORD, WORD, HWND, BOOL&);
     LRESULT OnOutputOpen(WORD, WORD, HWND, BOOL&);
+
+    LRESULT OnRatioFromInputChanged(WORD, WORD, HWND, BOOL&);
     LRESULT OnRatioSpinChanged(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnRatioBoxChanged(WORD, WORD, HWND, BOOL&);
     LRESULT OnRatioBoxFocus(WORD, WORD, HWND, BOOL&);
-    LRESULT OnModeChanged(WORD, WORD, HWND, BOOL& );
-    LRESULT OnModeRecursiveChanged(WORD, WORD, HWND, BOOL& );
+    
+    LRESULT OnModeChanged(WORD, WORD, HWND, BOOL&);
+    LRESULT OnModeRecursiveChanged(WORD, WORD, HWND, BOOL&);
 
     //
     // Other Public Interface
@@ -159,6 +174,7 @@ private:
     ATL::CString m_pathOutput;
     GDALDriverH m_driver;
     std::vector<sid2jp2::dataset_t> m_files;
+    std::map<std::string, int> m_ratios;
     
     sid2jp2::Translator m_translator;
     sid2jp2::Thread<sid2jp2::Translator> m_worker;
@@ -169,12 +185,12 @@ private:
 
     WTL::CEdit m_ctlPathInput;
     WTL::CEdit m_ctlPathOutput;
+    WTL::CEdit m_ctlInputRatioBox;
     WTL::CEdit m_ctlRatioBox;
     WTL::CUpDownCtrl m_ctlRatioSpin;
     WTL::CStatic m_ctlProgressInfo;
     WTL::CStatic m_ctlProgressFileInfo;
     WTL::CProgressBarCtrl m_ctlFileProgress;
-    WTL::CWaitCursor m_waitCursor;
 
     //
     // Private Functions
@@ -183,6 +199,7 @@ private:
     void UISetStateReady();
     void UISetStateBusy();
     void UISetStatePathBoxes(BOOL bBusy);
+    void UISetStateOptions(BOOL bInputRatioActive);
     void UIResetProgressBar();
     void CloseDialog(int nVal);
     void ProcessRatioSpinChange(LPNMUPDOWN pNMUD, UINT nID);
