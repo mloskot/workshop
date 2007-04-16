@@ -9,9 +9,11 @@
 #include "filesystem.h"
 // gdal
 #include <gdal.h>
+#include <cpl_string.h>
 // std
 #include <cassert>
 #include <cmath>
+#include <sstream>
 #include <vector>
 
 namespace sid2jp2
@@ -23,6 +25,7 @@ namespace sid2jp2
 //
 UINT WM_SID2JP2_FINISH = ::RegisterWindowMessage(_T("WM_SID2JP2_FINISH"));
 UINT WM_SID2JP2_FILE_NEXT = ::RegisterWindowMessage(_T("WM_SID2JP2_FILE_NEXT"));
+UINT WM_SID2JP2_TARGET_RATIO = ::RegisterWindowMessage(_T("WM_SID2JP2_TARGET_RATIO"));
 UINT WM_SID2JP2_FILE_PROGRESS = ::RegisterWindowMessage(_T("WM_SID2JP2_FILE_PROGRESS"));
 UINT WM_SID2JP2_FILE_FAILURE = ::RegisterWindowMessage(_T("WM_SID2JP2_FILE_FAILURE"));
 
@@ -41,7 +44,8 @@ Translator::~Translator()
 }
 
 void Translator::Configure(HWND listener, GDALDriverH driver, char** options,
-                           std::vector<dataset_t> const& datasets)
+                           std::vector<dataset_t> const& datasets,
+                           std::map<std::string, int> const& ratios)
 {
     assert(::IsWindow(listener));
     assert(NULL != driver);
@@ -53,6 +57,7 @@ void Translator::Configure(HWND listener, GDALDriverH driver, char** options,
 
     // TODO: Optimize
     m_datasets = datasets;
+    m_ratios = ratios;
 }
 
 bool Translator::IsTerminating() const
@@ -90,6 +95,15 @@ void Translator::Run()
         // Check if the output directory exists, otherwise
         // create it recursively, from output file path.
         fs::create_file_path_recurse(fileOutput);
+
+        // Assign target compression percentage
+        
+        int ratio = m_ratios[fileInput];
+        std::ostringstream os;
+        os << ratio;
+        m_options = ::CSLSetNameValue(m_options, "TARGET", os.str().c_str());
+
+        int x = CSLCount(m_options);
 
         // Translate MrSID file to JPEG200 ECW
         if (!ProcessFile(fileInput.c_str(), fileOutput.c_str()))
@@ -197,6 +211,17 @@ int CPL_STDCALL TranslationCallback(double complete, const char* msg, void* pArg
 
     // Continue translation
     return true;
+}
+
+int Translator::CompressionPercFromRatio(int ratio)
+{
+    if (0 >= ratio)
+    {
+        ratio = 1;
+    }
+
+    int const percentage = (100 - (100 / ratio));
+    return percentage;
 }
 
 } // namespace sid2jp2

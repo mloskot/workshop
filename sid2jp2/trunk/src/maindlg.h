@@ -85,8 +85,10 @@ public:
         // Custom SID2JP2 Messages
         MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_FILE_PROGRESS, OnTranslationProgress)
         MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_FILE_NEXT, OnTranslationNext)
+        MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_TARGET_RATIO, OnTranslationTargetRatio)
         MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_FILE_FAILURE, OnTranslationFailure)
         MESSAGE_HANDLER(sid2jp2::WM_SID2JP2_FINISH, OnTranslationFinish)
+        
 
         // Windows Messages
 		MSG_WM_INITDIALOG(OnInitDialog)
@@ -118,6 +120,7 @@ public:
     // SID2JP2 Translation Message handlers
     //
     LRESULT OnTranslationFinish(UINT, WPARAM, LPARAM, BOOL&);
+    LRESULT OnTranslationTargetRatio(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnTranslationFailure(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnTranslationNext(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnTranslationProgress(UINT, WPARAM, LPARAM, BOOL&);
@@ -164,6 +167,13 @@ private:
         eModeBatchRecursive = 2
     };
     ProcessingMode m_mode;
+
+    enum CompressionRatioMode
+    {
+        eInputFileRatio,
+        eUserRatio
+    };
+    CompressionRatioMode m_ratioMode;
 
     enum CacheValue
     {

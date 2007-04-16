@@ -17,6 +17,7 @@
 #include <cpl_error.h>
 #include <cpl_string.h>
 // std
+#include <cassert>
 #include <cmath>
 #include <string>
 #include <vector>
@@ -77,6 +78,7 @@ LRESULT MainDlg::OnInitDialog(HWND hWnd, LPARAM lParam)
 
     // Initialize data
     m_mode = eModeSingle;
+    m_ratioMode = eInputFileRatio;
 
     // Initialize GDAL environment
     GDALAllRegister();
@@ -128,27 +130,9 @@ LRESULT MainDlg::OnStart(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandle
         //
         // Collect translation options
         //
-        std::string targetRatio;
-        try
-        {
-            ATL::CString buf;
-            m_ctlRatioBox.GetWindowText(buf);
-            int ratio = std::wcstol(buf, NULL, 10);
-
-            // Calculate compression percentage
-            int perc = (100 - (100 / ratio));
-            targetRatio = boost::lexical_cast<std::string>(perc);
-        }
-        catch(boost::bad_lexical_cast& e)
-        {
-            std::string errMsg(e.what());
-            MessageBox(_T("Invalid value of Target Compression Ratio!"),
-                _T("Error!"), MB_OK | MB_ICONERROR);
-            return 0;
-        }
 
         char** copyOptions = NULL;
-        copyOptions = ::CSLSetNameValue(copyOptions, "TARGET", targetRatio.c_str());
+        //copyOptions = ::CSLSetNameValue(copyOptions, "TARGET", targetRatio.c_str());
         copyOptions = ::CSLSetNameValue(copyOptions, "LARGE_OK", "YES");
 
         if (eModeSingle == m_mode && m_files.size() > 1)
@@ -161,9 +145,7 @@ LRESULT MainDlg::OnStart(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandle
         //
         // Generate list of pairs of input/output MrSID images
         //
-
         // TODO: mloskot - replace hardcoded strings with resources
-
         m_ctlProgressInfo.SetWindowText(_T("Generating input files list..."));
 
         // Prepare dataset collection
@@ -224,23 +206,57 @@ LRESULT MainDlg::OnStart(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandle
 
         //
         // Generated and assign Target Compression Rations per image
-        //
+        //        
+        if (eInputFileRatio == m_ratioMode)
+        {
+            for (std::vector<dataset_t>::const_iterator it = m_files.begin();
+                 it != m_files.end(); ++it)
+            {
+                std::string const& inputFile = it->first;
+                
+                MrSidImageInfo sidInfo(inputFile);
+                m_ratios[inputFile] = sidInfo.GetCompressionRatio();
+            }
+        }
+        else
+        {
+            // Assign common Target Compression Ratio to all images
 
+            ATL::CString buf;
+            m_ctlRatioBox.GetWindowText(buf);
+            int ratio = 0;
 
-        // 1. Input ratio
-        // 2. User's ratio
+            try
+            {
+                std::string tmp = CT2A(buf);
+                ratio = boost::lexical_cast<int>(tmp);
+            }
+            catch(boost::bad_lexical_cast const& e)
+            {
+                std::string msg("Invalid value of compression ratio: ");
+                throw std::runtime_error(msg + e.what());
+            }
+
+            for (std::vector<dataset_t>::const_iterator it = m_files.begin();
+                 it != m_files.end(); ++it)
+            {
+                std::string const& inputFile = it->first;    
+                m_ratios[inputFile] = ratio;
+            }
+        }
+
+        // Check post-conditions
+        assert(m_files.size() == m_ratios.size());
 
         //
         // Set busy state
         //
-
         UISetStateBusy();
 
         //
         // Start processing collection of files
         //
-
-        m_translator.Configure(m_hWnd, m_driver, copyOptions, m_files);
+        m_translator.Configure(m_hWnd, m_driver, copyOptions, m_files, m_ratios);
         m_worker.StartAndWait();
 
     }
@@ -325,8 +341,13 @@ LRESULT MainDlg::OnModeRecursiveChanged(WORD wNotifyCode, WORD wID, HWND hWndCtl
 LRESULT MainDlg::OnRatioFromInputChanged(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
     // Button checked, Target Compression Ratio is set from input
-    BOOL bActivateInput = ::IsDlgButtonChecked(IDC_OPT_RATIO_FROM_INPUT);
+    BOOL bActivateInput = IsDlgButtonChecked(IDC_OPT_RATIO_FROM_INPUT);
     UISetStateOptions(bActivateInput);
+
+    if (bActivateInput)
+        m_ratioMode = eInputFileRatio;
+    else
+        m_ratioMode = eUserRatio;
 
     return 0;
 }
@@ -487,6 +508,11 @@ LRESULT MainDlg::OnTranslationFinish(UINT uMsg, WPARAM wParam, LPARAM lParam, BO
         UISetStateReady();
     }
 
+    return 0;
+}
+
+LRESULT MainDlg::OnTranslationTargetRatio(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+{
     return 0;
 }
 
@@ -696,6 +722,8 @@ void MainDlg::ClearDatasetList()
 {
     std::vector<dataset_t> empty;
     m_files.swap(empty);
+
+    m_ratios.clear();
 }
 
 BOOL MainDlg::IsTranslating() const
