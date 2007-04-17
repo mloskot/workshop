@@ -66,7 +66,7 @@ CAPTION "About sid2jp2"
 FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,69,122,50,14
-    CTEXT           "sid2jp2 v0.7 (Beta)\n\nMrSID to JPEG2000 Translator",IDC_STATIC,41,15,131,26
+    CTEXT           "sid2jp2 v0.8 (Beta)\n\nMrSID to JPEG2000 Translator",IDC_STATIC,41,15,131,26
     ICON            IDR_MAINFRAME,IDC_STATIC,15,15,20,20
     GROUPBOX        "",IDC_STATIC,7,7,173,111
     LTEXT           "Copyright (C) 2007 Mateusz Loskot",IDC_STATIC,15,47,157,8

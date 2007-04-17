@@ -96,14 +96,12 @@ void Translator::Run()
         // create it recursively, from output file path.
         fs::create_file_path_recurse(fileOutput);
 
-        // Assign target compression percentage
-        
-        int ratio = m_ratios[fileInput];
+        // Calculate percentage of image size reduction
+        int const ratio = m_ratios[fileInput];
+        int const perc = CompressionPercFromRatio(ratio);
         std::ostringstream os;
-        os << ratio;
+        os << perc;
         m_options = ::CSLSetNameValue(m_options, "TARGET", os.str().c_str());
-
-        int x = CSLCount(m_options);
 
         // Translate MrSID file to JPEG200 ECW
         if (!ProcessFile(fileInput.c_str(), fileOutput.c_str()))
