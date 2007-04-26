@@ -7,6 +7,7 @@
 #include "dataset.h"
 #include "error.h"
 #include "filesystem.h"
+#include "mrsidimageinfo.h"
 // gdal
 #include <gdal.h>
 #include <cpl_string.h>
@@ -45,7 +46,7 @@ Translator::~Translator()
 
 void Translator::Configure(HWND listener, GDALDriverH driver, char** options,
                            std::vector<dataset_t> const& datasets,
-                           std::map<std::string, int> const& ratios)
+                           std::map<std::string, MrSidImageInfo::int64> const& ratios)
 {
     assert(::IsWindow(listener));
     assert(NULL != driver);
@@ -97,7 +98,7 @@ void Translator::Run()
         fs::create_file_path_recurse(fileOutput);
 
         // Calculate percentage of image size reduction
-        int const ratio = m_ratios[fileInput];
+        int const ratio = static_cast<int>(m_ratios[fileInput]);
         int const perc = CompressionPercFromRatio(ratio);
         std::ostringstream os;
         os << perc;

@@ -6,6 +6,7 @@
 #define SID2JP2_TRANSLATOR_H_INCLUDED
 
 #include "dataset.h"
+#include "mrsidimageinfo.h"
 // gdal
 #include <gdal.h>
 // std
@@ -32,7 +33,7 @@ public:
     ~Translator();
     void Configure(HWND listener, GDALDriverH driver, char** options,
                    std::vector<dataset_t> const& datasets,
-                   std::map<std::string, int> const& ratios);
+                   std::map<std::string, MrSidImageInfo::int64> const& ratios);
     void Run();
     void Terminate();
     bool IsTerminating() const;
@@ -47,7 +48,7 @@ private:
     
     //std::vector<dataset_t> const& m_datasets;
     std::vector<dataset_t> m_datasets;
-    std::map<std::string, int> m_ratios;
+    std::map<std::string, MrSidImageInfo::int64> m_ratios;
     
     void Reset();
     bool ProcessFile(const char* inputFile, const char* outputFile);
@@ -62,4 +63,4 @@ int __stdcall TranslationCallback(double complete, const char* msg, void* pArg);
 
 } // namespace sid2jp2
 
-#endif
+#endif // SID2JP2_TRANSLATOR_H_INCLUDED
