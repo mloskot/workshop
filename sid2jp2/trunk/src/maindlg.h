@@ -9,6 +9,7 @@
 #include "dataset.h"
 #include "thread.h"
 #include "translator.h"
+#include "mrsidimageinfo.h"
 // gdal
 #include <gdal.h>
 // std
@@ -184,7 +185,7 @@ private:
     ATL::CString m_pathOutput;
     GDALDriverH m_driver;
     std::vector<sid2jp2::dataset_t> m_files;
-    std::map<std::string, int> m_ratios;
+    std::map<std::string, sid2jp2::MrSidImageInfo::int64> m_ratios;
     
     sid2jp2::Translator m_translator;
     sid2jp2::Thread<sid2jp2::Translator> m_worker;

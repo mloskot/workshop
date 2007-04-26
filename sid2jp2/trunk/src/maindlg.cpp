@@ -323,6 +323,7 @@ LRESULT MainDlg::OnModeChanged(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& b
 
         // Reset input/output paths
         UISetStatePathBoxes(false);
+        UISetStateOptions(true);
     }
 
     return 0;
@@ -415,10 +416,10 @@ LRESULT MainDlg::OnInputOpen(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHa
             // Read and display image compression ratio
             std::string filePath = CT2A(m_pathInput);
             MrSidImageInfo sidInfo(filePath);
-            int nInputRatio = sidInfo.GetCompressionRatio();
+            MrSidImageInfo::int64 nInputRatio = sidInfo.GetCompressionRatio();
 
             ATL::CString msg;
-            msg.Format(_T("%d"), nInputRatio);
+            msg.Format(_T("%I64d"), nInputRatio);
             m_ctlInputRatioBox.SetWindowText(msg);
 
             UIEnable(IDC_START, true);
