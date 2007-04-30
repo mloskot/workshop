@@ -63,7 +63,7 @@ void generate_file_list_recurse(std::string const& basedir,
     typedef sequence_t::value_type value_t;
 
     // Build collection of directories in 'basedir'
-    sequence_t dirs(basedir.c_str(), "*", sequence_t::directories);
+	sequence_t dirs(basedir.c_str(), "*", sequence_t::directories);
 
     // Build collection of files, recursively
     for (sequence_t::const_iterator it = dirs.begin(); it != dirs.end(); ++it)

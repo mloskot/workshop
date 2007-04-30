@@ -50,7 +50,7 @@ void generate_dataset_list(std::string const& input_dir,
 
         // Strip file or path+file
         if (recurse)
-            part = file.substr(tmp_dir.size() - 1);
+            part = file.substr(input_dir.size() + 1);
         else
             part = file.substr(file.rfind('\\') + 1, file.size() - 1);
 
