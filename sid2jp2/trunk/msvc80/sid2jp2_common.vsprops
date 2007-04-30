@@ -10,7 +10,7 @@
 	/>
 	<UserMacro
 		Name="FWTOOLS_DIR"
-		Value="C:\Program Files\FWTools1.2.3"
+		Value="C:\Program Files\FWTools1.3.0"
 	/>
 	<UserMacro
 		Name="GDAL_BIN_DIR"
