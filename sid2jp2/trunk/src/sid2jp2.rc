@@ -66,11 +66,11 @@ CAPTION "About sid2jp2"
 FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,69,122,50,14
-    CTEXT           "sid2jp2 v1.0 RC1\n\nMrSID to JPEG2000 Translator",IDC_STATIC,41,15,131,26
-    ICON            IDR_MAINFRAME,IDC_STATIC,15,15,20,20
+    CTEXT           "sid2jp2 v1.0 RC2\n\nMrSID to JPEG2000 Translator",IDC_STATIC,41,15,131,26
+    ICON            IDR_MAINFRAME,IDC_STATIC,15,15,21,20
     GROUPBOX        "",IDC_STATIC,7,7,173,111
     LTEXT           "Copyright (C) 2007 Mateusz Loskot",IDC_STATIC,15,47,157,8
-    LTEXT           "License: Boost License, BSD or LGPL",IDC_STATIC,15,59,157,8
+    LTEXT           "GNU Lesser General Public License",IDC_STATIC,15,59,157,8
     LTEXT           "GDAL Information:",IDC_STATIC,15,73,157,8
     LTEXT           "Here info about GDAL version",IDC_GDALINFO,41,86,131,8
 END

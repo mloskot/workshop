@@ -98,7 +98,8 @@ public:
 
         // User-Interface Commands
         COMMAND_HANDLER(IDC_OPT_TARGET_RATIO_BOX, EN_CHANGE, OnRatioBoxChanged)
-        COMMAND_HANDLER(IDC_OPT_TARGET_RATIO_BOX, EN_SETFOCUS, OnRatioBoxFocus)
+        COMMAND_HANDLER(IDC_OPT_TARGET_RATIO_BOX, EN_SETFOCUS, OnRatioBoxSetFocus)
+		COMMAND_HANDLER(IDC_OPT_TARGET_RATIO_BOX, EN_KILLFOCUS, OnRatioBoxKillFocus)
         COMMAND_HANDLER(IDC_OPT_RATIO_FROM_INPUT, BN_CLICKED, OnRatioFromInputChanged)
         COMMAND_HANDLER(IDC_MODE_BATCH_RECURSIVE, BN_CLICKED, OnModeRecursiveChanged)
         COMMAND_RANGE_HANDLER(IDC_MODE_SINGLE, IDC_MODE_BATCH, OnModeChanged)
@@ -145,7 +146,8 @@ public:
     LRESULT OnRatioFromInputChanged(WORD, WORD, HWND, BOOL&);
     LRESULT OnRatioSpinChanged(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnRatioBoxChanged(WORD, WORD, HWND, BOOL&);
-    LRESULT OnRatioBoxFocus(WORD, WORD, HWND, BOOL&);
+    LRESULT OnRatioBoxSetFocus(WORD, WORD, HWND, BOOL&);
+    LRESULT OnRatioBoxKillFocus(WORD, WORD, HWND, BOOL&);
     
     LRESULT OnModeChanged(WORD, WORD, HWND, BOOL&);
     LRESULT OnModeRecursiveChanged(WORD, WORD, HWND, BOOL&);
@@ -175,6 +177,12 @@ private:
         eUserRatio
     };
     CompressionRatioMode m_ratioMode;
+
+	enum CompressionRatioRange
+	{
+		eRatioMin = 1,
+		eRatioMax = 99,
+	};
 
     enum CacheValue
     {

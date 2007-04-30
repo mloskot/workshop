@@ -192,6 +192,7 @@ LRESULT MainDlg::OnStart(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandle
             m_ctlProgressInfo.SetWindowText(_T("Generating list of files in recursive mode..."));
 
             std::vector<std::string> tmpList;
+			fs::generate_file_list(inputPath, "*.sid", tmpList);
             fs::generate_file_list_recurse(inputPath, "*.sid", tmpList);
 
             // Rebuild basic list to colletion of input/output paths
@@ -224,7 +225,7 @@ LRESULT MainDlg::OnStart(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandle
 
             ATL::CString buf;
             m_ctlRatioBox.GetWindowText(buf);
-            int ratio = 0;
+            int ratio = eRatioMin;
 
             try
             {
@@ -323,7 +324,6 @@ LRESULT MainDlg::OnModeChanged(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& b
 
         // Reset input/output paths
         UISetStatePathBoxes(false);
-        UISetStateOptions(true);
     }
 
     return 0;
@@ -379,8 +379,37 @@ LRESULT MainDlg::OnRatioBoxChanged(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOO
 {
     return 0;
 }
-LRESULT MainDlg::OnRatioBoxFocus(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT MainDlg::OnRatioBoxSetFocus(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
+    return 0;
+}
+
+LRESULT MainDlg::OnRatioBoxKillFocus(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+{
+	ATL::CString msg;
+    ATL::CString buf;
+    m_ctlRatioBox.GetWindowText(buf);
+    int nRatio = std::wcstol(buf, NULL, 10);
+
+	if (nRatio < eRatioMin)
+	{
+        msg.Format(_T("The compression ratio value '%d' is incorrect. Please, use value from range between 1 and 99."), nRatio);
+		MessageBox(msg, _T("Error!"), MB_OK | MB_ICONEXCLAMATION);
+
+	    buf.Format(_T("%02d"), eRatioMin);
+		m_ctlRatioBox.SetWindowText(buf);
+	}
+
+	if (nRatio > eRatioMax)
+	{
+        msg.Format(_T("The compression ratio value '%d' is incorrect. Please, use value from range between 1 and 99."), nRatio);
+		MessageBox(msg, _T("Error!"), MB_OK | MB_ICONEXCLAMATION);
+
+
+	    buf.Format(_T("%02d"), eRatioMax);
+		m_ctlRatioBox.SetWindowText(buf);
+	}
+
     return 0;
 }
 
@@ -596,15 +625,16 @@ void MainDlg::UISetStateReady()
     // Initialize options group
     m_ctlInputRatioBox.SetWindowText(_T("0"));
     m_ctlRatioSpin.SetBuddy(m_ctlRatioBox);
-    m_ctlRatioSpin.SetRange(0, 100);
+    m_ctlRatioSpin.SetRange(eRatioMin, eRatioMax);
     m_ctlRatioSpin.SetPos(20);
 
     ATL::CString buf;
     buf.Format(_T("%02d"), m_ctlRatioSpin.GetPos());
     m_ctlRatioBox.SetWindowText(buf);
 
-    UISetCheck(IDC_OPT_RATIO_FROM_INPUT, true);
     UISetStateOptions(true);
+    UISetCheck(IDC_OPT_RATIO_FROM_INPUT, false);
+    UISetCheck(IDC_OPT_RATIO_FROM_INPUT, true);
 
     // Initialize input/output paths
     UISetStatePathBoxes(false);
@@ -705,7 +735,7 @@ void MainDlg::ProcessRatioSpinChange(LPNMUPDOWN pNMUD, UINT nID)
     {
         // Down button pressed
         --nRatio;
-        if (nRatio <= nLower)
+        if (nRatio < nLower)
             nRatio = nUpper;
     }
 
