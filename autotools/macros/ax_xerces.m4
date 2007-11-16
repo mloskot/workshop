@@ -1,4 +1,4 @@
-dnl $Id: ax_xerces.m4 12800 2007-11-16 03:51:46Z mloskot $
+dnl $Id$
 dnl
 dnl @synopsis AX_LIB_XERCES([MINIMUM-VERSION])
 dnl
