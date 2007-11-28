@@ -9,14 +9,14 @@ dnl and defines compilation flags
 dnl 
 dnl Macro supports following options and their values:
 dnl 1) Single-option usage:
-dnl --with-oracle - path to ORACLE_HOME directory
+dnl --with-oci - path to ORACLE_HOME directory
 dnl 2) Two-options usage (both options are required):
-dnl --with-oracle-include - path to directory with OCI headers
-dnl --with-oracle-lib - path to directory with OCI libraries 
+dnl --with-oci-include - path to directory with OCI headers
+dnl --with-oci-lib - path to directory with OCI libraries 
 dnl
 dnl NOTE: These options described above does not take yes|no values.
 dnl If 'yes' value is passed, then WARNING message will be displayed,
-dnl 'no' value, as well as the --without-oracle* variations will cause
+dnl 'no' value, as well as the --without-oci-* variations will cause
 dnl the macro won't check enything.
 dnl
 dnl This macro calls:
@@ -27,21 +27,22 @@ dnl   AC_SUBST(ORACLE_OCI_VERSION)
 dnl
 dnl And sets:
 dnl
-dnl   HAVE_ORACLE
+dnl   HAVE_ORACLE_OCI
 dnl
 dnl @category InstalledPackages
 dnl @category Cxx
 dnl @author Mateusz Loskot <mateusz@loskot.net>
 dnl @version $Date$
 dnl @license AllPermissive
-dnl
-dnl $Id$
+dnl          Copying and distribution of this file, with or without modification,
+dnl          are permitted in any medium without royalty provided the copyright notice and
+dnl          this notice are preserved.
 dnl
 AC_DEFUN([AX_LIB_ORACLE_OCI],
 [
-    AC_ARG_WITH([oracle],
-        AC_HELP_STRING([--with-oracle=@<:@DIR@:>@],
-            [use Oracle OCI API from given path to Oracle home directory]
+    AC_ARG_WITH([oci],
+        AC_HELP_STRING([--with-oci=@<:@ARG@:>@],
+            [use Oracle OCI API from given Oracle home (ARG=path); use existing ORACLE_HOME (ARG=yes); disable Oracle OCI support (ARG=no)]
         ),
         [
         if test "$withval" = "yes"; then
@@ -50,6 +51,10 @@ AC_DEFUN([AX_LIB_ORACLE_OCI],
             else
                 oracle_home_dir=""
             fi 
+        elif test -d "$withval"; then
+            oracle_home_dir="$withval"
+        else
+            oracle_home_dir=""
         fi
         ],
         [
@@ -61,15 +66,15 @@ AC_DEFUN([AX_LIB_ORACLE_OCI],
         ]
     )
 
-    AC_ARG_WITH([oracle-include],
-        AC_HELP_STRING([--with-oracle-include=@<:@DIR@:>@],
+    AC_ARG_WITH([oci-include],
+        AC_HELP_STRING([--with-oci-include=@<:@DIR@:>@],
             [use Oracle OCI API headers from given path]
         ),
         [oracle_home_include_dir="$withval"],
         [oracle_home_include_dir=""]
     )
-    AC_ARG_WITH([oracle-lib],
-        AC_HELP_STRING([--with-oracle-lib=@<:@DIR@:>@],
+    AC_ARG_WITH([oci-lib],
+        AC_HELP_STRING([--with-oci-lib=@<:@DIR@:>@],
             [use Oracle OCI API libraries from given path]
         ),
         [oracle_home_lib_dir="$withval"],
@@ -119,8 +124,8 @@ AC_DEFUN([AX_LIB_ORACLE_OCI],
 
     if test "$want_oracle_but_no_path" = "yes"; then
         AC_MSG_WARN([Oracle support is requested but no Oracle paths have been provided. \
-Please, locate Oracle directories using --with-oracle or \
---with-oracle-include and --with-oracle-lib options.])
+Please, locate Oracle directories using --with-oci or \
+--with-oci-include and --with-oci-lib options.])
     fi
 
     dnl
@@ -139,7 +144,7 @@ Please, locate Oracle directories using --with-oracle or \
         dnl Depending on later Oracle version detection,
         dnl -lnnz10 flag might be removed for older Oracle < 10.x
         saved_LDFLAGS="$LDFLAGS"
-        oci_ldflags="-L$oracle_lib_dir -lclntsh -lnnz10"
+        oci_ldflags="-L$oracle_lib_dir -lclntsh"
         LDFLAGS="$LDFLAGS $oci_ldflags"
 
         dnl
@@ -251,8 +256,21 @@ if (envh) OCIHandleFree(envh, OCI_HTYPE_ENV);
 
             oracle_version_check=`expr $oracle_version_number \>\= $oracle_version_req_number`
             if test "$oracle_version_check" = "1"; then
+
+                oracle_version_checked="yes"
                 AC_MSG_RESULT([yes])
+
+                dnl Add -lnnz10 flag to Oracle >= 10.x
+                AC_MSG_CHECKING([for Oracle version >= 10.x to use -lnnz10 flag])
+                oracle_nnz10_check=`expr $oracle_version_number \>\= 10 \* 1000000`
+                if test "$oracle_nnz10_check" = "1"; then
+                    ORACLE_OCI_LDFLAGS="$ORACLE_OCI_LDFLAGS -lnnz10"
+                    AC_MSG_RESULT([yes])
+                else
+                    AC_MSG_RESULT([no])
+                fi
             else
+                oracle_version_checked="no"
                 AC_MSG_RESULT([no])
                 AC_MSG_ERROR([Oracle $ORACLE_OCI_VERSION found, but required version is $oracle_version_req])
             fi
@@ -263,7 +281,18 @@ if (envh) OCIHandleFree(envh, OCI_HTYPE_ENV);
         fi
     fi
 
-    AC_SUBST([ORACLE_OCI_VERSION])
-    AC_SUBST([ORACLE_OCI_CFLAGS])
-    AC_SUBST([ORACLE_OCI_LDFLAGS])
+    AC_MSG_CHECKING([if Oracle support is enabled])
+
+    if test "$oci_header_found" = "yes" -a "$oci_lib_found" = "yes"; then
+
+        AC_SUBST([ORACLE_OCI_VERSION])
+        AC_SUBST([ORACLE_OCI_CFLAGS])
+        AC_SUBST([ORACLE_OCI_LDFLAGS])
+
+        HAVE_ORACLE_OCI="yes"
+    else
+        HAVE_ORACLE_OCI="no"
+    fi
+    
+    AC_MSG_RESULT([$HAVE_ORACLE_OCI])
 ])
