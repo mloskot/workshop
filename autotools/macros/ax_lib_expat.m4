@@ -1,11 +1,10 @@
-dnl $Id$
-dnl
 dnl @synopsis AX_LIB_EXPAT([MINIMUM-VERSION])
 dnl
+dnl @summary Test for the Expat XML Parser library.
+dnl
 dnl This macro provides tests of availability of Expat XML Parser 
-dnl of particular version or newer.
-dnl This macro checks for Expat XML Parser headers and libraries 
-dnl and defines compilation flags
+dnl of particular version or newer. This macro checks for Expat 
+dnl XML Parser headers and libraries and defines compilation flags
 dnl 
 dnl Macro supports following options and their values:
 dnl 1) Single-option usage:
@@ -28,12 +27,9 @@ dnl
 dnl @category InstalledPackages
 dnl @category Cxx
 dnl @author Mateusz Loskot <mateusz@loskot.net>
-dnl @version $Date$
+dnl @version 2007-12-05
 dnl @license AllPermissive
-dnl          Copying and distribution of this file, with or without modification,
-dnl          are permitted in any medium without royalty provided the copyright notice and
-dnl          this notice are preserved.
-dnl
+
 AC_DEFUN([AX_LIB_EXPAT],
 [
     AC_ARG_WITH([expat],
