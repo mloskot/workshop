@@ -53,25 +53,25 @@ AC_DEFUN([AX_LIB_SQLITE3],
     SQLITE3_CFLAGS=""
     SQLITE3_LDFLAGS=""
     SQLITE3_VERSION=""
+    HAVE_SQLITE3="no"
+
+    sqlite3_version_req=ifelse([$1], [], [3.0.0], [$1])
+    sqlite3_version_req_shorten=`expr $sqlite3_version_req : '\([[0-9]]*\.[[0-9]]*\)'`
+    sqlite3_version_req_major=`expr $sqlite3_version_req : '\([[0-9]]*\)'`
+    sqlite3_version_req_minor=`expr $sqlite3_version_req : '[[0-9]]*\.\([[0-9]]*\)'`
+    sqlite3_version_req_micro=`expr $sqlite3_version_req : '[[0-9]]*\.[[0-9]]*\.\([[0-9]]*\)'`
+    if test "x$sqlite3_version_req_micro" = "x" ; then
+        sqlite3_version_req_micro="0"
+    fi
+
+    sqlite3_version_req_number=`expr $sqlite3_version_req_major \* 1000000 \
+                               \+ $sqlite3_version_req_minor \* 1000 \
+                               \+ $sqlite3_version_req_micro`
+
+    AC_MSG_CHECKING([for SQLite3 library >= $sqlite3_version_req])
 
     if test "x$WANT_SQLITE3" = "xyes"; then
-
         ac_sqlite3_header="sqlite3.h"
-        
-        sqlite3_version_req=ifelse([$1], [], [3.0.0], [$1])
-        sqlite3_version_req_shorten=`expr $sqlite3_version_req : '\([[0-9]]*\.[[0-9]]*\)'`
-        sqlite3_version_req_major=`expr $sqlite3_version_req : '\([[0-9]]*\)'`
-        sqlite3_version_req_minor=`expr $sqlite3_version_req : '[[0-9]]*\.\([[0-9]]*\)'`
-        sqlite3_version_req_micro=`expr $sqlite3_version_req : '[[0-9]]*\.[[0-9]]*\.\([[0-9]]*\)'`
-        if test "x$sqlite3_version_req_micro" = "x" ; then
-            sqlite3_version_req_micro="0"
-        fi
-
-        sqlite3_version_req_number=`expr $sqlite3_version_req_major \* 1000000 \
-                                   \+ $sqlite3_version_req_minor \* 1000 \
-                                   \+ $sqlite3_version_req_micro`
-
-        AC_MSG_CHECKING([for SQLite3 library >= $sqlite3_version_req])
 
         if test "$ac_sqlite3_path" != ""; then
             ac_sqlite3_ldflags="-L$ac_sqlite3_path/lib"
@@ -93,7 +93,7 @@ AC_DEFUN([AX_LIB_SQLITE3],
         saved_CPPFLAGS="$CPPFLAGS"
         CPPFLAGS="$CPPFLAGS $ac_sqlite3_cppflags"
 
-        AC_LANG_PUSH(C++)
+        AC_LANG_PUSH([C++])
         AC_COMPILE_IFELSE(
             [
             AC_LANG_PROGRAM([[@%:@include <sqlite3.h>]],
@@ -108,10 +108,12 @@ AC_DEFUN([AX_LIB_SQLITE3],
             ],
             [
             AC_MSG_RESULT([yes])
+            HAVE_SQLITE3="yes"
             success="yes"
             ],
             [
             AC_MSG_RESULT([not found])
+            HAVE_SQLITE3="no"
             succees="no"
             ]
         )
@@ -138,11 +140,15 @@ AC_DEFUN([AX_LIB_SQLITE3],
                 fi
             fi
 
-            AC_SUBST(SQLITE3_CFLAGS)
-            AC_SUBST(SQLITE3_LDFLAGS)
-            AC_SUBST(SQLITE3_VERSION)
-            AC_DEFINE(HAVE_SQLITE3)
+            AC_SUBST([SQLITE3_VERSION])
         fi
+
+        AC_SUBST([SQLITE3_CFLAGS])
+        AC_SUBST([SQLITE3_LDFLAGS])
+        AC_DEFINE([HAVE_SQLITE3])
+
+    else
+        AC_MSG_RESULT([disabled])
     fi
 ])
 
