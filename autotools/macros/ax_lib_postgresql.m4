@@ -54,7 +54,7 @@ AC_DEFUN([AX_LIB_POSTGRESQL],
 
     POSTGRESQL_CFLAGS=""
     POSTGRESQL_LDFLAGS=""
-    POSTGRESQL_POSTGRESQL=""
+    POSTGRESQL_VERSION=""
 
     dnl
     dnl Check PostgreSQL libraries (libpq)
