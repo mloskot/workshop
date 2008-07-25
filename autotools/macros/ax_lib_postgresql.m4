@@ -28,7 +28,7 @@ dnl
 dnl @category InstalledPackages
 dnl @category Cxx
 dnl @author Mateusz Loskot <mateusz@loskot.net>
-dnl @version $Date: 2008-01-29 03:03:17 +0100 (Tue, 29 Jan 2008) $
+dnl @version $Date$
 dnl @license AllPermissive
 dnl
 dnl $Id$
