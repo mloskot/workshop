@@ -29,7 +29,7 @@ dnl
 dnl @category InstalledPackages
 dnl @category Cxx
 dnl @author Mateusz Loskot <mateusz@loskot.net>
-dnl @version $Date$
+dnl @version $Date: 2008-03-01 05:40:46 +0100 (Sat, 01 Mar 2008) $
 dnl @license AllPermissive
 dnl          Copying and distribution of this file, with or without modification,
 dnl          are permitted in any medium without royalty provided the copyright notice and
