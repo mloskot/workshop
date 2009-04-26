@@ -1,0 +1,11 @@
+#!/bin/bash
+#
+# Wrapper around bjam, to colorize it's output and pipe through less.
+# Jumps to the first error that occurs during the build process.
+#
+
+BJAM=`which bjam`
+COLORBB=colorbb.pl
+
+${BJAM} "$@" 2>&1 | ${COLORBB}
+exit ${PIPESTATUS[0]}
