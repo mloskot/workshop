@@ -1,4 +1,3 @@
-Id
 ---------------------------------------------------------------
 sid2jp 0.6 (Beta)
 ---------------------------------------------------------------
@@ -22,8 +21,8 @@ where X.Y.Z is version number of FWTools.
 Project:
 ---------------------------------------------------------------
 
-Subversion: http://mloskot.devjavu.com/projects/mloskot/browser/sid2jp2
-Tickets: http://mloskot.devjavu.com
+Homepage and Git repository available at
+http://github.com/mloskot/workshop
 
 --
 Mateusz Loskot
