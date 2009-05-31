@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="Windows-1252"?>
+<VisualStudioPropertySheet
+	ProjectType="Visual C++"
+	Version="8.00"
+	Name="soci"
+	>
+	<Tool
+		Name="VCCLCompilerTool"
+		AdditionalIncludeDirectories="&quot;$(SOCI_ROOT_DIR)\src\core&quot;;&quot;$(SOCI_ROOT_DIR)\src\backends\postgresql&quot;;&quot;$(POSTGRESQL_ROOT_DIR)\include&quot;"
+	/>
+	<Tool
+		Name="VCLinkerTool"
+		AdditionalLibraryDirectories="&quot;$(SOCI_ROOT_DIR)\build\msvc80\lib\debug&quot;;&quot;$(POSTGRESQL_ROOT_DIR)\lib&quot;"
+	/>
+	<UserMacro
+		Name="SOCI_ROOT_DIR"
+		Value="D:\dev\soci\_git\master"
+	/>
+	<UserMacro
+		Name="POSTGRESQL_ROOT_DIR"
+		Value="C:\Program Files\PostgreSQL\8.3"
+	/>
+</VisualStudioPropertySheet>
