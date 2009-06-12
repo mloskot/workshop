@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include <boost/cstdint.hpp>
@@ -60,9 +61,9 @@ int main()
 
             std::cout << "\tfrom little-endian:\n";
             {
-                std::string const hex("010C0000005839B4C876BEF33F83C0CAA145B61640");    
+                std::string const hex_little("010C0000005839B4C876BEF33F83C0CAA145B61640");    
                 byte_array bytes;
-                hex_to_bytes(hex, bytes);
+                hex_to_bytes(hex_little, bytes);
 
                 n8 = yatbinrw::load_little_endian<boost::uint8_t, sizeof(boost::uint8_t)>(bytes.begin());
                 std::cout << "\t\tn8 = " << (int)n8 << std::endl;
@@ -76,6 +77,29 @@ int main()
                 std::cout << "\t\td64 = " << d64 << std::endl;
 
                 n64 = yatbinrw::load_little_endian<boost::uint64_t, sizeof(boost::uint64_t)>(bytes.begin() + 1 + 4 + 8);
+                std::memcpy(&d64, &n64, sizeof(double));
+                std::cout << "\t\tn64 = " << n64 << std::endl;
+                std::cout << "\t\td64 = " << d64 << std::endl;
+            }
+
+            std::cout << "\tfrom big-endian\n";
+            {
+                std::string const hex_big("01000000013FF3BE76C8B439584016B645A1CAC083");
+                byte_array bytes;
+                hex_to_bytes(hex_big, bytes);        
+
+                n8 = yatbinrw::load_big_endian<boost::uint8_t, sizeof(boost::uint8_t)>(bytes.begin());
+                std::cout << "\t\tn8 = " << (int)n8 << std::endl;
+
+                n32 = yatbinrw::load_big_endian<boost::uint32_t, sizeof(boost::uint32_t)>(bytes.begin() + 1);
+                std::cout << "\t\tn32 = " << n32 << std::endl;
+
+                n64 = yatbinrw::load_big_endian<boost::uint64_t, sizeof(boost::uint64_t)>(bytes.begin() + 1 + 4);
+                std::memcpy(&d64, &n64, sizeof(double));
+                std::cout << "\t\tn64 = " << n64 << std::endl;
+                std::cout << "\t\td64 = " << d64 << std::endl;
+
+                n64 = yatbinrw::load_big_endian<boost::uint64_t, sizeof(boost::uint64_t)>(bytes.begin() + 1 + 4 + 8);
                 std::memcpy(&d64, &n64, sizeof(double));
                 std::cout << "\t\tn64 = " << n64 << std::endl;
                 std::cout << "\t\td64 = " << d64 << std::endl;
