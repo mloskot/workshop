@@ -69,10 +69,24 @@ struct unrolled_byte_loops
         next::store_big(bytes - 1, value >> 8);
     }
     
+    template <typename Iterator>
+    static void store_big(Iterator& bytes, T value)
+    {
+        *(bytes - 1) = static_cast<char>(value);
+        next::store_big(--bytes, value >> 8);
+    }
+
     static void store_little(char* bytes, T value)
     {
         *bytes = static_cast<char>(value);
         next::store_little(bytes + 1, value >> 8);
+    }
+
+    template <typename Iterator>
+    static void store_little(Iterator& bytes, T value)
+    {
+        *bytes = static_cast<char>(value);
+        next::store_little(++bytes, value >> 8);
     }
 };
 
@@ -106,8 +120,21 @@ struct unrolled_byte_loops<T, 1, false>
         *(bytes - 1) = static_cast<char>(value);
     }
     
+    template <typename Iterator>
+    static void store_big(Iterator& bytes, T value)
+    {
+        *(bytes - 1) = static_cast<char>(value);
+    }
+
     static void store_little(char* bytes, T value)
     {
+        *bytes = static_cast<char>(value);
+    }
+
+    template <typename Iterator>
+    static void store_little(Iterator& bytes, T value)
+    {
+        // typename Iterator::value_type
         *bytes = static_cast<char>(value);
     }
 };
@@ -142,9 +169,25 @@ struct unrolled_byte_loops<T, 1, true>
         *(bytes - 1) = static_cast<char>(value);
     }
     
+    template <typename Iterator>
+    static void store_big(Iterator& bytes, T value)
+    {
+        BOOST_STATIC_ASSERT(boost::is_signed<typename Iterator::value_type>::value);
+
+        *(bytes - 1) = static_cast<typename Iterator::value_type>(value);
+    }
+
     static void store_little(char* bytes, T value)
     {
         *bytes = static_cast<char>(value);
+    }
+
+    template <typename Iterator>
+    static void store_little(Iterator& bytes, T value)
+    {
+        BOOST_STATIC_ASSERT(boost::is_signed<typename Iterator::value_type>::value);
+
+        *bytes = static_cast<typename Iterator::value_type>(value);
     }
 };
 
@@ -158,8 +201,8 @@ inline T load_big_endian(const void* bytes)
 template <typename T, std::size_t N, typename Iterator>
 inline T load_big_endian(Iterator bytes)
 {
-    Iterator it(bytes + N);
-    return unrolled_byte_loops<T, N>::load_big(it);
+    std::advance(bytes, N);
+    return unrolled_byte_loops<T, N>::load_big(bytes);
 }
 
 template <typename T, std::size_t N>
@@ -182,11 +225,24 @@ inline void store_big_endian(void* bytes, T value)
     unrolled_byte_loops<T, N>::store_big(ptr + N, value);
 }
 
+template <typename T, std::size_t N, typename Iterator>
+inline void store_big_endian(Iterator bytes, T value)
+{
+    std::advance(bytes, N);
+    unrolled_byte_loops<T, N>::store_big(bytes, value);
+}
+
 template <typename T, std::size_t N>
 inline void store_little_endian(void* bytes, T value)
 {
     char* ptr = static_cast<char*>(bytes);
     unrolled_byte_loops<T, N>::store_little(ptr, value);
+}
+
+template <typename T, std::size_t N, typename Iterator>
+inline void store_little_endian(Iterator bytes, T value)
+{
+    unrolled_byte_loops<T, N>::store_little(bytes, value);
 }
 
 } // namespace yatbinrw
