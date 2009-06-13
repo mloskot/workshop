@@ -136,31 +136,18 @@ struct little_endian_tag {};
 
 namespace detail {
 
-// TODO: Use T and T1,T2
-
-template <typename T, std::size_t N, typename Iterator>
-T load_dispatch(Iterator& bytes, big_endian_tag, big_endian_tag)
+template <typename T, std::size_t N, typename Iterator, typename E>
+T load_dispatch(Iterator& bytes, E, E)
 {
     return unrolled_byte_loops<T, N>::load_forward(bytes);
 }
 
-template <typename T, std::size_t N, typename Iterator>
-T load_dispatch(Iterator& bytes, big_endian_tag, little_endian_tag)
+template <typename T, std::size_t N, typename Iterator, typename E1, typename E2>
+T load_dispatch(Iterator& bytes, E1, E2)
 {
     return unrolled_byte_loops<T, N>::load_backward(bytes);
 }
 
-template <typename T, std::size_t N, typename Iterator>
-T load_dispatch(Iterator& bytes, little_endian_tag, little_endian_tag)
-{
-    return unrolled_byte_loops<T, N>::load_forward(bytes);
-}
-
-template <typename T, std::size_t N, typename Iterator>
-T load_dispatch(Iterator& bytes, little_endian_tag, big_endian_tag)
-{
-    return unrolled_byte_loops<T, N>::load_backward(bytes);
-}
 
 template <typename T>
 struct endian_value_base
