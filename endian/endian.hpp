@@ -145,9 +145,22 @@ T load_dispatch(Iterator& bytes, E, E)
 template <typename T, std::size_t N, typename Iterator, typename E1, typename E2>
 T load_dispatch(Iterator& bytes, E1, E2)
 {
+    std::advance(bytes, N);
     return unrolled_byte_loops<T, N>::load_backward(bytes);
 }
 
+template <typename T, std::size_t N, typename Iterator, typename E>
+void store_dispatch(Iterator& bytes, T value, E, E)
+{
+    return unrolled_byte_loops<T, N>::store_forward(bytes, value);
+}
+
+template <typename T, std::size_t N, typename Iterator, typename E1, typename E2>
+void store_dispatch(Iterator& bytes, T value, E1, E2)
+{
+    std::advance(bytes, N);
+    return unrolled_byte_loops<T, N>::store_backward(bytes, value);
+}
 
 template <typename T>
 struct endian_value_base
@@ -156,6 +169,7 @@ struct endian_value_base
     typedef native_endian_tag endian_type;
 
     endian_value_base() : value(T()) {}
+    explicit endian_value_base(T value) : value(value) {}
 
     operator T() const
     {
@@ -173,10 +187,19 @@ struct endian_value : public detail::endian_value_base<T>
 {
     typedef detail::endian_value_base<T> base;
 
+    endian_value() {}
+    explicit endian_value(T value) : base(value) {}
+
     template <typename E, typename Iterator>
     void load(Iterator bytes)
     {
         base::value = detail::load_dispatch<T, N>(bytes, base::endian_type(), E());
+    }
+
+    template <typename E, typename Iterator>
+    void store(Iterator bytes)
+    {
+        detail::store_dispatch<T, N>(bytes, base::value, base::endian_type(), E());
     }
 };
 
@@ -185,13 +208,27 @@ struct endian_value<double, 8> : public detail::endian_value_base<double>
 {
     typedef detail::endian_value_base<double> base;
 
+    endian_value() {}
+    explicit endian_value(double value) : base(value) {}
+
     template <typename E, typename Iterator>
     void load(Iterator bytes)
     {
         endian_value<boost::uint64_t, 8> raw;
         raw.load<E>(bytes);
-        double& target = base::value;
-        std::memcpy(&target, &raw, sizeof(boost::uint64_t));
+
+        double& target_value = base::value;
+        std::memcpy(&target_value, &raw, sizeof(double));
+    }
+
+    template <typename E, typename Iterator>
+    void store(Iterator bytes)
+    {
+        boost::uint64_t raw;
+        double const& source_value = base::value;
+        std::memcpy(&raw, &source_value, sizeof(boost::uint64_t));
+
+        detail::store_dispatch<boost::uint64_t, sizeof(boost::uint64_t)>(bytes, raw, base::endian_type(), E());
     }
 };
 
