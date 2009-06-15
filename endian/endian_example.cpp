@@ -79,12 +79,16 @@ typedef std::vector<unsigned char> byte_array;
 
 } // anonymous namespace
 
+
 int main()
 {
     using namespace mloskot;
+
+    std::size_t const bytes_size = 21;
+
     try
     {
-        // load little-endian
+        std::cout << "Test load little-endian" << std::endl;
         {
             std::string const hex_little("010C0000005839B4C876BEF33F83C0CAA145B61640");
             std::cout << hex_little << std::endl;
@@ -113,7 +117,40 @@ int main()
             std::cout << ev64d2 << std::endl;
         }
 
-        // load little-endian
+        std::cout << "Test load little-endian (raw pointer)" << std::endl;
+        {
+            std::string const hex_little("010C0000005839B4C876BEF33F83C0CAA145B61640");
+            std::cout << hex_little << std::endl;
+
+            byte_array bytes;
+            hex_to_bytes(hex_little, bytes);
+
+            assert(bytes_size == bytes.size());
+            boost::uint8_t tbytes[bytes_size] = { 0 };
+            std::copy(bytes.begin(), bytes.end(), tbytes);
+
+            endian::endian_value<boost::uint8_t> ev8;
+            ev8.load<endian::little_endian_tag>(tbytes);
+
+            std::cout << (int)ev8 << std::endl;
+
+            endian::endian_value<boost::uint32_t> ev32;
+            ev32.load<endian::little_endian_tag>(tbytes + 1);
+
+            std::cout << ev32 << std::endl;
+
+            endian::endian_value<double> ev64d1;
+            ev64d1.load<endian::little_endian_tag>(tbytes + 1 + 4);
+
+            std::cout << ev64d1 << std::endl;
+
+            endian::endian_value<double> ev64d2;
+            ev64d2.load<endian::little_endian_tag>(tbytes + 1 + 4 + 8);
+
+            std::cout << ev64d2 << std::endl;
+        }
+
+        std::cout << "Test load big-endian" << std::endl;
         {
             std::string const hex_big("010000000C3FF3BE76C8B439584016B645A1CAC083");
             std::cout << hex_big << std::endl;
@@ -142,6 +179,40 @@ int main()
             std::cout << ev64d2 << std::endl;
         }
 
+        std::cout << "Test load big-endian (raw pointer)" << std::endl;
+        {
+            std::string const hex_big("010000000C3FF3BE76C8B439584016B645A1CAC083");
+            std::cout << hex_big << std::endl;
+
+            byte_array bytes;
+            hex_to_bytes(hex_big, bytes);
+
+            assert(bytes_size == bytes.size());
+            boost::uint8_t tbytes[bytes_size] = { 0 };
+            std::copy(bytes.begin(), bytes.end(), tbytes);
+
+            endian::endian_value<boost::uint8_t> ev8;
+            ev8.load<endian::big_endian_tag>(tbytes);
+
+            std::cout << (int)ev8 << std::endl;
+
+            endian::endian_value<boost::uint32_t> ev32;
+            ev32.load<endian::big_endian_tag>(tbytes + 1);
+
+            std::cout << ev32 << std::endl;
+
+            endian::endian_value<double> ev64d1;
+            ev64d1.load<endian::big_endian_tag>(tbytes + 1 + 4);
+
+            std::cout << ev64d1 << std::endl;
+
+            endian::endian_value<double> ev64d2;
+            ev64d2.load<endian::big_endian_tag>(tbytes + 1 + 4 + 8);
+
+            std::cout << ev64d2 << std::endl;
+        }
+
+        std::cout << "Test store little-/big-endian" << std::endl;
         {
             std::size_t const len = 1 + 4 + 8 + 8;
              byte_array bytes_big(len, 'X');
@@ -168,7 +239,6 @@ int main()
              std::cout << hex << std::endl;
              bytes_to_hex(bytes_big, hex);
              std::cout << hex << std::endl;
-
         }
     }
     catch (std::exception const& e)
