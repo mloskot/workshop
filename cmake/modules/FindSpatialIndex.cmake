@@ -6,7 +6,10 @@
 # SPATIALINDEX_LIBRARY     = full path to the library
 # SPATIALINDEX_INCLUDE_DIR = where to find the library headers 
 #
-# Author: Mateusz Loskot <mateusz@loskot.net>
+# Copyright (c) 2009 Mateusz Loskot <mateusz@loskot.net>
+#
+# Redistribution and use is allowed according to the terms of the BSD license.
+# For details see the accompanying COPYING-CMAKE-SCRIPTS file.
 #
 ###############################################################################
 MESSAGE(STATUS "Searching for SpatialIndex ${SpatialIndex_FIND_VERSION}+ library")
