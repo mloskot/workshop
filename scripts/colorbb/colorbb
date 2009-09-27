@@ -5,7 +5,7 @@
 #
 # BEGIN OF CONFIGURATION 
 # Update settings below if necessary:
-COLORBB="/home/mloskot/dev/mloskot/_svn/mloskot/scripts/colorbb/colorbb.pl"
+COLORBB="/home/mloskot/dev/mloskot/_git/workshop/scripts/colorbb/colorbb.pl"
 BJAM=`which bjam`
 # END OF CONFIGURATION
 
