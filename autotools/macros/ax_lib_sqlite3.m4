@@ -1,4 +1,4 @@
-dnl $Id$
+dnl $Id: ax_lib_sqlite3.m4 18516 2010-01-10 23:10:19Z rouault $
 dnl
 dnl @synopsis AX_LIB_SQLITE3([MINIMUM-VERSION])
 dnl 
@@ -24,10 +24,10 @@ dnl
 dnl @category InstalledPackages
 dnl @category Cxx
 dnl @author Mateusz Loskot <mateusz@loskot.net>
-dnl @version $Date$
+dnl @version $Date: 2010-01-10 23:10:19 +0000 (Sun, 10 Jan 2010) $
 dnl @license AllPermissive
 dnl
-dnl $Id$
+dnl $Id: ax_lib_sqlite3.m4 18516 2010-01-10 23:10:19Z rouault $
 dnl
 AC_DEFUN([AX_LIB_SQLITE3],
 [
@@ -81,8 +81,8 @@ AC_DEFUN([AX_LIB_SQLITE3],
                 if test -f "$ac_sqlite3_path_tmp/include/$ac_sqlite3_header" \
                     && test -r "$ac_sqlite3_path_tmp/include/$ac_sqlite3_header"; then
                     ac_sqlite3_path=$ac_sqlite3_path_tmp
-                    ac_sqlite3_ldflags="-I$ac_sqlite3_path_tmp/include"
-                    ac_sqlite3_cppflags="-L$ac_sqlite3_path_tmp/lib"
+                    ac_sqlite3_ldflags="-L$ac_sqlite3_path_tmp/lib"
+                    ac_sqlite3_cppflags="-I$ac_sqlite3_path_tmp/include"
                     break;
                 fi
             done
@@ -145,7 +145,6 @@ AC_DEFUN([AX_LIB_SQLITE3],
 
         AC_SUBST([SQLITE3_CFLAGS])
         AC_SUBST([SQLITE3_LDFLAGS])
-        AC_DEFINE([HAVE_SQLITE3])
 
     else
         AC_MSG_RESULT([disabled])
