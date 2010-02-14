@@ -17,9 +17,8 @@ dnl --with-xerces-lib - linker flags for Xerces
 dnl
 dnl This macro calls:
 dnl
-dnl   AC_SUBST(XERCES_CPPFLAGS)
+dnl   AC_SUBST(XERCES_CFLAGS)
 dnl   AC_SUBST(XERCES_LDFLAGS)
-dnl   AC_SUBST(XERCES_LIBS)
 dnl   AC_SUBST(XERCES_VERSION) - only if version requirement is used
 dnl
 dnl And sets:
@@ -37,8 +36,6 @@ dnl          this notice are preserved.
 dnl
 AC_DEFUN([AX_LIB_XERCES],
 [
-    AC_REQUIRE([ACX_PTHREAD])
-
     AC_ARG_WITH([xerces],
         AC_HELP_STRING([--with-xerces=@<:@ARG@:>@],
             [use Xerces C++ Parser from given prefix (ARG=path); check standard prefixes (ARG=yes); disable (ARG=no)]
@@ -84,11 +81,11 @@ AC_DEFUN([AX_LIB_XERCES],
         AC_HELP_STRING([--with-xerces-lib=@<:@ARG@:>@],
             [link options for Xerces C++ Parser libraries]
         ),
-        [xerces_ldflags="$withval"],
-        [xerces_ldflags=""]
+        [xerces_lib_flags="$withval"],
+        [xerces_lib_flags=""]
     )
 
-    XERCES_CPPFLAGS=""
+    XERCES_CFLAGS=""
     XERCES_LDFLAGS=""
     XERCES_VERSION=""
 
@@ -100,7 +97,11 @@ AC_DEFUN([AX_LIB_XERCES],
     if test -n "$xerces_prefix"; then
         xerces_include_dir="$xerces_prefix/include"
         xerces_include_dir2="$xerces_prefix/include/xercesc"
-        xerces_ldflags="-L$xerces_prefix/lib"
+        if test "$xerces_prefix" = "/usr"; then
+            xerces_lib_flags="-lxerces-c -lpthread"
+        else
+            xerces_lib_flags="-L$xerces_prefix/lib -lxerces-c -lpthread"
+        fi
         run_xerces_test="yes"
     elif test "$xerces_requested" = "yes"; then
         if test -n "$xerces_include_dir" -a -n "$xerces_lib_flags"; then
@@ -111,8 +112,6 @@ AC_DEFUN([AX_LIB_XERCES],
         run_xerces_test="no"
     fi
 
-    xerces_libs="-lxerces-c"
-
     dnl
     dnl Check Xerces C++ Parser files
     dnl
@@ -122,10 +121,7 @@ AC_DEFUN([AX_LIB_XERCES],
         CPPFLAGS="$CPPFLAGS -I$xerces_include_dir -I$xerces_include_dir2"
 
         saved_LDFLAGS="$LDFLAGS"
-        LDFLAGS="$LDFLAGS $xerces_ldflags $PTHREAD_LDFLAGS"
-
-        saved_LIBS="$LIBS"
-        LIBS="$xerces_libs $PTHREAD_LIBS $LIBS"
+        LDFLAGS="$LDFLAGS $xerces_lib_flags"
 
         dnl
         dnl Check Xerces headers
@@ -142,7 +138,7 @@ AC_DEFUN([AX_LIB_XERCES],
                 [[]]
             )],
             [
-            XERCES_CPPFLAGS="-I$xerces_include_dir -I$xerces_include_dir2"
+            XERCES_CFLAGS="-I$xerces_include_dir -I$xerces_include_dir2"
             xerces_header_found="yes"
             AC_MSG_RESULT([found])
             ],
@@ -175,8 +171,7 @@ XMLPlatformUtils::Initialize();
                     ]]
                 )],
                 [
-                XERCES_LDFLAGS="$xerces_ldflags $PTHREAD_LDFLAGS"
-                XERCES_LIBS="$xerces_libs $PTHREAD_LIBS"
+                XERCES_LDFLAGS="$xerces_lib_flags"
                 xerces_lib_found="yes"
                 AC_MSG_RESULT([found])
                 ],
@@ -190,7 +185,6 @@ XMLPlatformUtils::Initialize();
 
         CPPFLAGS="$saved_CPPFLAGS"
         LDFLAGS="$saved_LDFLAGS"
-        LIBS="$saved_LIBS"
     fi
 
     AC_MSG_CHECKING([for Xerces C++ Parser])
@@ -198,9 +192,8 @@ XMLPlatformUtils::Initialize();
     if test "$run_xerces_test" = "yes"; then
         if test "$xerces_header_found" = "yes" -a "$xerces_lib_found" = "yes"; then
 
-            AC_SUBST([XERCES_CPPFLAGS])
+            AC_SUBST([XERCES_CFLAGS])
             AC_SUBST([XERCES_LDFLAGS])
-            AC_SUBST([XERCES_LIBS])
 
             HAVE_XERCES="yes"
         else 

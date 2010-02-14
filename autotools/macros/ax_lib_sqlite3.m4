@@ -1,4 +1,4 @@
-dnl $Id: ax_lib_sqlite3.m4 18516 2010-01-10 23:10:19Z rouault $
+dnl $Id$
 dnl
 dnl @synopsis AX_LIB_SQLITE3([MINIMUM-VERSION])
 dnl 
@@ -24,10 +24,10 @@ dnl
 dnl @category InstalledPackages
 dnl @category Cxx
 dnl @author Mateusz Loskot <mateusz@loskot.net>
-dnl @version $Date: 2010-01-10 23:10:19 +0000 (Sun, 10 Jan 2010) $
+dnl @version $Date$
 dnl @license AllPermissive
 dnl
-dnl $Id: ax_lib_sqlite3.m4 18516 2010-01-10 23:10:19Z rouault $
+dnl $Id$
 dnl
 AC_DEFUN([AX_LIB_SQLITE3],
 [
@@ -68,25 +68,60 @@ AC_DEFUN([AX_LIB_SQLITE3],
                                \+ $sqlite3_version_req_minor \* 1000 \
                                \+ $sqlite3_version_req_micro`
 
-    AC_MSG_CHECKING([for SQLite3 library >= $sqlite3_version_req])
-
     if test "x$WANT_SQLITE3" = "xyes"; then
         ac_sqlite3_header="sqlite3.h"
+        LIB_SQLITE3_FOUND=no
 
         if test "$ac_sqlite3_path" != ""; then
-            ac_sqlite3_ldflags="-L$ac_sqlite3_path/lib"
+
+            unset ac_cv_lib_sqlite3_sqlite3_open
+            saved_LIBS="$LIBS"
+            LIBS=""
+            AC_CHECK_LIB(sqlite3,sqlite3_open,LIB_SQLITE3_FOUND=yes,LIB_SQLITE3_FOUND=no,-L$ac_sqlite3_path/lib)
+            LIBS="$saved_LIBS"
+            if test "$LIB_SQLITE3_FOUND" = "yes"; then
+                ac_sqlite3_ldflags="-L$ac_sqlite3_path/lib"
+            fi
+
             ac_sqlite3_cppflags="-I$ac_sqlite3_path/include"
         else
             for ac_sqlite3_path_tmp in /usr /usr/local /opt ; do
                 if test -f "$ac_sqlite3_path_tmp/include/$ac_sqlite3_header" \
                     && test -r "$ac_sqlite3_path_tmp/include/$ac_sqlite3_header"; then
                     ac_sqlite3_path=$ac_sqlite3_path_tmp
-                    ac_sqlite3_ldflags="-L$ac_sqlite3_path_tmp/lib"
+
+                    unset ac_cv_lib_sqlite3_sqlite3_open
+                    saved_LIBS="$LIBS"
+                    LIBS=""
+                    AC_CHECK_LIB(sqlite3,sqlite3_open,LIB_SQLITE3_FOUND=yes,LIB_SQLITE3_FOUND=no,)
+                    LIBS="$saved_LIBS"
+                    if test "$LIB_SQLITE3_FOUND" = "yes"; then
+                        ac_sqlite3_ldflags=""
+                    else
+                        unset ac_cv_lib_sqlite3_sqlite3_open
+                        saved_LIBS="$LIBS"
+                        LIBS=""
+                        AC_CHECK_LIB(sqlite3,sqlite3_open,LIB_SQLITE3_FOUND=yes,LIB_SQLITE3_FOUND=no,-L$ac_sqlite3_path_tmp/lib)
+                        LIBS="$saved_LIBS"
+                        if test "$LIB_SQLITE3_FOUND" = "yes"; then
+                            ac_sqlite3_ldflags="-L$ac_sqlite3_path_tmp/lib"
+                        fi
+                    fi
+
                     ac_sqlite3_cppflags="-I$ac_sqlite3_path_tmp/include"
                     break;
                 fi
             done
         fi
+
+        if test "$LIB_SQLITE3_FOUND" = "no"; then
+            WANT_SQLITE3="no"
+        fi
+    fi
+    
+    AC_MSG_CHECKING([for SQLite3 library >= $sqlite3_version_req])
+
+    if test "x$WANT_SQLITE3" = "xyes"; then
 
         ac_sqlite3_ldflags="$ac_sqlite3_ldflags -lsqlite3"
 
