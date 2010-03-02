@@ -44,8 +44,8 @@ else()
 
   # Handle the QUIETLY and REQUIRED arguments and set POSTGRESQL_FOUND to TRUE
   # if all listed variables are TRUE
-  INCLUDE(FindPackageHandleStandardArgs)
-  FIND_PACKAGE_HANDLE_STANDARD_ARGS(PostgreSQL DEFAULT_MSG
+  include(FindPackageHandleStandardArgs)
+  find_package_handle_standard_args(PostgreSQL DEFAULT_MSG
     POSTGRESQL_INCLUDE_DIR POSTGRESQL_LIBRARIES)
 
   # TODO: Do we want to mark these as advanced? --mloskot

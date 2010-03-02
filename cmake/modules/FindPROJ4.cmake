@@ -16,29 +16,29 @@
 ###############################################################################
 
 # Try to use OSGeo4W installation
-IF(WIN32)
-    SET(PROJ4_OSGEO4W_HOME "C:/OSGeo4W") 
+if(WIN32)
+    set(PROJ4_OSGEO4W_HOME "C:/OSGeo4W") 
 
-    IF($ENV{OSGEO4W_HOME})
-        SET(PROJ4_OSGEO4W_HOME "$ENV{OSGEO4W_HOME}") 
-    ENDIF()
-ENDIF(WIN32)
+    if($ENV{OSGEO4W_HOME})
+        set(PROJ4_OSGEO4W_HOME "$ENV{OSGEO4W_HOME}") 
+    endif()
+endif(WIN32)
 
-FIND_PATH(PROJ4_INCLUDE_DIR proj_api.h
+find_path(PROJ4_INCLUDE_DIR proj_api.h
     PATHS ${PROJ4_OSGEO4W_HOME}/include
     DOC "Path to PROJ.4 library include directory")
 
-SET(PROJ4_NAMES ${PROJ4_NAMES} proj proj_i)
-FIND_LIBRARY(PROJ4_LIBRARY
+set(PROJ4_NAMES ${PROJ4_NAMES} proj proj_i)
+find_library(PROJ4_LIBRARY
     NAMES ${PROJ4_NAMES}
     PATHS ${PROJ4_OSGEO4W_HOME}/lib
     DOC "Path to PROJ.4 library file")
 
 # Handle the QUIETLY and REQUIRED arguments and set SPATIALINDEX_FOUND to TRUE
 # if all listed variables are TRUE
-INCLUDE(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(PROJ4 DEFAULT_MSG PROJ4_LIBRARY PROJ4_INCLUDE_DIR)
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(PROJ4 DEFAULT_MSG PROJ4_LIBRARY PROJ4_INCLUDE_DIR)
 
-IF(PROJ4_FOUND)
-  SET(PROJ4_LIBRARIES ${PROJ4_LIBRARY})
-ENDIF()
+if(PROJ4_FOUND)
+  set(PROJ4_LIBRARIES ${PROJ4_LIBRARY})
+endif()
