@@ -1,0 +1,49 @@
+= Linux Ubuntu 10.10 (amd64) =
+
+* GCC 4.4.5
+* GDAL 1.8dev (SVN trunk)
+* Compiled with optimisation -O2
+* Runtime settings:
+** GDAL_CACHEMAX=512 (http://trac.osgeo.org/gdal/wiki/ConfigOptions)
+** Create tile as MEM dataset (http://gdal.org/frmt_mem.html), then CreateCopy to PNG file.
+
+== Tile size 200x200 ==
+
+$ time ../gdal_image_tiles_test_200
+real	11m52.005s
+user	10m12.720s
+sys	0m38.290s
+
+$ ls -1 | wc -l
+11664
+
+$ du -sh .
+460M
+
+== Tile size 256x256 ==
+
+$ time ../gdal_image_tiles_test_256 
+
+real	11m51.904s
+user	10m11.100s
+sys	0m17.570s
+
+$ ls -1 | wc -l
+7225
+
+$ du -sh .
+455M
+
+== Tile Size 512x512 ==
+
+$ time ../gdal_image_tiles_test_512 
+
+real	11m26.673s
+user	10m11.360s
+sys	0m4.990s
+
+$ ls -1 | wc -l
+1849
+
+$ du -sh .
+432M
