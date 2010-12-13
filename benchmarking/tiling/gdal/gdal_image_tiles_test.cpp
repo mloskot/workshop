@@ -7,6 +7,12 @@
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
 //
+// Preprocessor definitions:
+// TEST_TILE_200
+// TEST_TILE_256
+// TEST_TILE_512
+// TEST_OUTPUT_JPG (default output is PNG)
+//
 #include <gdal_priv.h>
 #include <cpl_conv.h>
 #include <boost/range/functions.hpp>
@@ -34,34 +40,34 @@ dataset_t open_dataset(char const* const file)
     return ds;
 }
 
-dataset_t create_tile_mem_dataset(unsigned int tile_xsize, unsigned int tile_ysize)
+dataset_t create_tile_output_dataset(unsigned int tile_xsize, unsigned int tile_ysize)
 {
     GDALDriver* drv = GetGDALDriverManager()->GetDriverByName("MEM");
     if (0 == drv)
     {
-        throw std::runtime_error("mem driver not found");
+        throw std::runtime_error("driver not found");
     }
 
     dataset_t ds(make_dataset(drv->Create("", tile_xsize, tile_ysize, 3, ::GDT_Byte, 0)));
     if(!ds)
     {
-        throw std::runtime_error("failed to create mem dataset");
+        throw std::runtime_error("failed to create output dataset");
     }
     return ds;
 }
 
-void save_tile_as_png(dataset_t dstile, char const* const file)
+void save_tile(dataset_t dstile, char const* const driver, char const* const file)
 {
-    GDALDriver* drv = GetGDALDriverManager()->GetDriverByName("PNG");
+    GDALDriver* drv = GetGDALDriverManager()->GetDriverByName(driver);
     if (0 == drv)
     {
-        throw std::runtime_error("png driver not found");
+        throw std::runtime_error("driver not found");
     }
 
     dataset_t dspng(make_dataset(drv->CreateCopy(file, dstile.get(), false, 0, 0, 0)));
     if(!dspng)
     {
-        throw std::runtime_error("failed to create png dataset");
+        throw std::runtime_error("failed to save tile");
     }
 }
 
@@ -112,11 +118,18 @@ int main()
         ::GDALAllRegister();
 
         char input_file_name[] = "/home/mloskot/data/truemarble/TrueMarble.250m.21600x21600.E2.tif";
-        dataset_t input(open_dataset(input_file_name));
 
+#ifdef TEST_OUTPUT_JPG
+        char const* const output_driver_name = "JPEG";
+        char output_file_name[] = "__out_tile__00000000.jpg";
+        char* const p_back_of_file_name_number(
+                         boost::end(output_file_name) - (boost::size(".jpg") + 1));
+#else
+        char const* const output_driver_name = "PNG";
         char output_file_name[] = "__out_tile__00000000.png";
         char* const p_back_of_file_name_number(
                          boost::end(output_file_name) - (boost::size(".png") + 1));
+#endif
 
 #if defined(TEST_TILE_256)
         unsigned int const output_tile_size(256);
@@ -125,30 +138,35 @@ int main()
 #else
         unsigned int const output_tile_size(200);
 #endif
-        int const xsize = input->GetRasterXSize();
-        int const ysize = input->GetRasterYSize();
-        int const nbands = input->GetRasterCount();
-        assert(3 == nbands);
 
+        dataset_t input_dataset(open_dataset(input_file_name));
+        int const nbands = input_dataset->GetRasterCount();
+        assert(3 == nbands);
+        int const xsize = input_dataset->GetRasterXSize();
+        int const ysize = input_dataset->GetRasterYSize();
         unsigned int output_tile_counter(0);
+
+        unsigned int tile_xsize = output_tile_size;
+        unsigned int tile_ysize = output_tile_size;
+        raster_data_t data(tile_xsize * tile_ysize * nbands);
+
         for (int x(0); x < xsize; x += output_tile_size)
         {
-            unsigned int const tile_xsize = x + output_tile_size > xsize
-                ? xsize - x : output_tile_size;
+            tile_xsize = x + output_tile_size > xsize ? xsize - x : output_tile_size;
 
             for (int y(0); y < ysize; y += output_tile_size)
             {
-                unsigned int const tile_ysize = y + output_tile_size > ysize
-                    ? ysize - y : output_tile_size;
+                tile_ysize = y + output_tile_size > ysize ? ysize - y : output_tile_size;
+                unsigned int const tile_size = tile_xsize * tile_ysize * nbands;
+                if (data.size() != tile_size)
+                    data.resize(tile_size);
 
-                raster_data_t data(tile_xsize * tile_ysize * nbands);
-
-                read(input, data, x, y, tile_xsize, tile_ysize, nbands);
+                read(input_dataset, data, x, y, tile_xsize, tile_ysize, nbands);
 
                 convert_int_to_hex(output_tile_counter++, p_back_of_file_name_number);
-                dataset_t output(create_tile_mem_dataset(tile_xsize, tile_ysize));
-                write(output, data, 0, 0, tile_xsize, tile_ysize, nbands);
-                save_tile_as_png(output, output_file_name);
+                dataset_t output_dataset(create_tile_output_dataset(tile_xsize, tile_ysize));
+                write(output_dataset, data, 0, 0, tile_xsize, tile_ysize, nbands);
+                save_tile(output_dataset, output_driver_name, output_file_name);
 
 #ifndef NDEBUG
                 if (tile_xsize != output_tile_size || tile_ysize != output_tile_size)
