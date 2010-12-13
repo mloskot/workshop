@@ -1,13 +1,21 @@
 = Linux Ubuntu 10.10 (amd64) =
 
+* CPU: Intel Core 2 Duo P8600 @ 2.40GHz
+* RAM: 4 GB
 * GCC 4.4.5
 * GDAL 1.8dev (SVN trunk)
-* Compiled with optimisation -O2
+* Optimisation -O2
 * Runtime settings:
 ** GDAL_CACHEMAX=512 (http://trac.osgeo.org/gdal/wiki/ConfigOptions)
-** Create tile as MEM dataset (http://gdal.org/frmt_mem.html), then CreateCopy to PNG file.
+** Create tile as MEM dataset (http://gdal.org/frmt_mem.html), then CreateCopy to PNG or JPEG file.
 
-== Tile size 200x200 ==
+== PNG ==
+
+http://gdal.org/frmt_various.html#PNG
+
+ZLEVEL=6 (default compression level)
+
+=== Tile size 200x200 ===
 
 $ time ../gdal_image_tiles_test_200
 real	11m52.005s
@@ -18,9 +26,9 @@ $ ls -1 | wc -l
 11664
 
 $ du -sh .
-460M
+460M .
 
-== Tile size 256x256 ==
+=== Tile size 256x256 ===
 
 $ time ../gdal_image_tiles_test_256 
 
@@ -32,9 +40,9 @@ $ ls -1 | wc -l
 7225
 
 $ du -sh .
-455M
+455M .
 
-== Tile Size 512x512 ==
+=== Tile Size 512x512 ===
 
 $ time ../gdal_image_tiles_test_512 
 
@@ -46,4 +54,52 @@ $ ls -1 | wc -l
 1849
 
 $ du -sh .
-432M
+432M .
+
+== JPEG ==
+
+http://gdal.org/frmt_jpeg.html
+
+QUALITY=75  (default quality level)
+
+=== Tile size 200x200 ===
+
+$ time ../gdal_image_tiles_test_200 
+
+real	2m13.756s
+user	1m36.270s
+sys	0m34.350s
+
+$ ls -1 | wc -l
+11664
+
+$ du -sh .
+67M	.
+
+=== Tile size 256x256 ===
+
+$ time ../gdal_image_tiles_test_256 
+
+real	2m31.506s
+user	1m23.580s
+sys	0m14.770s
+
+$ ls -1 | wc -l
+7225
+
+$ du -sh .
+55M	.
+
+=== Tile size 512x512 ===
+
+$ time ../gdal_image_tiles_test_512
+
+real	2m22.735s
+user	1m14.230s
+sys	0m3.220s
+
+$ ls -1 | wc -l
+1849
+
+$ du -sh .
+42M	.

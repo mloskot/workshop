@@ -33,3 +33,4 @@ release512:	gdal_image_tiles_test.cpp
 clean:
 	$(RM) *.o *_200* *_256* *_512*
 	$(RM) output/*.png
+	$(RM) output/*.jpg
