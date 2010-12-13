@@ -1,0 +1,8 @@
+This is a simple benchmark of raster tiling.
+The idea was discussed on Boost mailing list during review of Boost.GIL IO
+and Toolbox extensions:
+
+http://lists.boost.org/Archives/boost/2010/12/173902.php
+
+The goal is to compare GDAL versus GIL IO (Christian's implementation)
+and IO2 (Domagoj's, available from Boost Sandbox) in simple tiling use case.
