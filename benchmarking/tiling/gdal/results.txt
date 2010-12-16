@@ -8,6 +8,18 @@
 * Runtime settings:
 ** GDAL_CACHEMAX=512 (http://trac.osgeo.org/gdal/wiki/ConfigOptions)
 ** Create tile as MEM dataset (http://gdal.org/frmt_mem.html), then CreateCopy to PNG or JPEG file.
+** Befre each run, all disk caches had been dropped (http://kernelnewbies.org/Linux_2_6_16)
+
+$ sync (optional)
+$ echo 3 | sudo tee -a /proc/sys/vm/drop_caches
+
+How to run:
+
+$ make
+$ ./run.sh
+$ make clean
+$ JPG=yes make
+$ ./run.sh
 
 == PNG ==
 
