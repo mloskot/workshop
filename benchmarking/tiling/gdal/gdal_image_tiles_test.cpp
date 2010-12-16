@@ -40,15 +40,19 @@ dataset_t open_dataset(char const* const file)
     return ds;
 }
 
-dataset_t create_tile_output_dataset(unsigned int tile_xsize, unsigned int tile_ysize)
+GDALDriver& find_driver(char const* const name)
 {
-    GDALDriver* drv = GetGDALDriverManager()->GetDriverByName("MEM");
+    GDALDriver* drv = GetGDALDriverManager()->GetDriverByName(name);
     if (0 == drv)
     {
         throw std::runtime_error("driver not found");
     }
+    return *drv;
+}
 
-    dataset_t ds(make_dataset(drv->Create("", tile_xsize, tile_ysize, 3, ::GDT_Byte, 0)));
+dataset_t create_tile_dataset(GDALDriver& drv, unsigned int tile_xsize, unsigned int tile_ysize)
+{
+    dataset_t ds(make_dataset(drv.Create("", tile_xsize, tile_ysize, 3, ::GDT_Byte, 0)));
     if(!ds)
     {
         throw std::runtime_error("failed to create output dataset");
@@ -56,15 +60,9 @@ dataset_t create_tile_output_dataset(unsigned int tile_xsize, unsigned int tile_
     return ds;
 }
 
-void save_tile(dataset_t dstile, char const* const driver, char const* const file)
+void save_tile(GDALDriver& drv, dataset_t dstile, char const* const file)
 {
-    GDALDriver* drv = GetGDALDriverManager()->GetDriverByName(driver);
-    if (0 == drv)
-    {
-        throw std::runtime_error("driver not found");
-    }
-
-    dataset_t dspng(make_dataset(drv->CreateCopy(file, dstile.get(), false, 0, 0, 0)));
+    dataset_t dspng(make_dataset(drv.CreateCopy(file, dstile.get(), false, 0, 0, 0)));
     if(!dspng)
     {
         throw std::runtime_error("failed to save tile");
@@ -139,6 +137,9 @@ int main()
         unsigned int const output_tile_size(200);
 #endif
 
+        GDALDriver& memory_driver = find_driver("MEM");
+        GDALDriver& output_driver = find_driver(output_driver_name);
+
         dataset_t input_dataset(open_dataset(input_file_name));
         int const nbands = input_dataset->GetRasterCount();
         assert(3 == nbands);
@@ -164,9 +165,10 @@ int main()
                 read(input_dataset, data, x, y, tile_xsize, tile_ysize, nbands);
 
                 convert_int_to_hex(output_tile_counter++, p_back_of_file_name_number);
-                dataset_t output_dataset(create_tile_output_dataset(tile_xsize, tile_ysize));
-                write(output_dataset, data, 0, 0, tile_xsize, tile_ysize, nbands);
-                save_tile(output_dataset, output_driver_name, output_file_name);
+                dataset_t tile_dataset(create_tile_dataset(memory_driver, tile_xsize, tile_ysize));
+
+                write(tile_dataset, data, 0, 0, tile_xsize, tile_ysize, nbands);
+                save_tile(output_driver, tile_dataset, output_file_name);
 
 #ifndef NDEBUG
                 if (tile_xsize != output_tile_size || tile_ysize != output_tile_size)
