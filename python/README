@@ -1,0 +1,3 @@
+Examples of extending and embedding Python 3.x in C++ using Python C API
+
+Author: Mateusz Loskot <mateusz@loskot.net>
