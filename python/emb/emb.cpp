@@ -1,3 +1,11 @@
+//
+// Copyright (C) 2011 Mateusz Loskot <mateusz@loskot.net>
+// Distributed under the Boost Software License, Version 1.0.
+// (See accompanying file LICENSE_1_0.txt or copy at
+// http://www.boost.org/LICENSE_1_0.txt)
+//
+// Blog article: http://mateusz.loskot.net/?p=2819
+
 #include <functional>
 #include <iostream>
 #include <string>
@@ -146,9 +154,10 @@ int main()
 
     PyRun_SimpleString("print(\'hello to console\')");
 
-    // switch sys.stdout to custom handler
+    // here comes the ***magic***
     std::string buffer;
     {
+        // switch sys.stdout to custom handler
         emb::stdout_write_type write = [&buffer] (std::string s) { buffer += s; };
         emb::set_stdout(write);
         PyRun_SimpleString("print(\'hello to buffer\')");
