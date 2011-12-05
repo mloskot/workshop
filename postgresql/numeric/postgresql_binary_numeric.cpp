@@ -55,7 +55,8 @@ struct numeric
     };
 
     std::vector<short> digits;
-    sign_mode sign;
+    sign_mode mode;
+    int sign;
     int exp;
 };
 
@@ -117,12 +118,18 @@ numeric read_numeric(char* val)
     numeric n;
 
     if (sign == numeric::positive)
-        n.sign = numeric::positive;
+    {
+        n.mode = numeric::positive;
+        n.sign = 0;
+    }
     else if (sign == numeric::negative)
-        n.sign = numeric::negative;
+    {
+        n.mode = numeric::negative;
+        n.sign = 1;
+    }
     else if (sign == numeric::NaN)
     {
-        n.sign = numeric::NaN;
+        n.mode = numeric::NaN;
         return n;
     }
     else
@@ -150,12 +157,11 @@ numeric read_numeric(char* val)
         std::array<short, 4> const shifts = { 1000, 100, 10, 1 };
         for(auto it(words.cbegin()); it != words.cend(); ++it)
         {
-            for (auto sit(shifts.cbegin()); sit < shifts.cend(); ++sit)
+            for (std::size_t si = 0; si < shifts.size(); ++si)
             {
-                short const& word = *it;
-                short const& shift = *sit;
-                double const fd  = floor_div(word, shift);
-                short digit = static_cast<int>(fd) % 10;
+                double const fd  = floor_div(*it, shifts[si]);
+                short const digit = static_cast<int>(fd) % 10;
+                assert(digit < 10);
                 if (!digits.empty() || digit != 0)
                     digits.push_back(digit);
             }
@@ -186,16 +192,19 @@ numeric read_numeric(char* val)
         }
     }
 
+    assert(!digits.empty());
+
     n.digits = digits;
     n.exp = exp;
     return n;
 }
 
-void echo(std::string col, numeric const& n)
+template <typename T>
+void echo(std::string col, numeric const& n, T value)
 {
     std::cout << col << ":\tsign=" << n.sign << "\texp=" << n.exp << "\tdigits=";
     std::for_each(n.digits.cbegin(), n.digits.cend(), [](short d) { std::cout << d; });
-    std::cout << std::endl;
+    std::cout << "\tvalue=" << value << std::endl;
 }
 
 int main()
@@ -214,7 +223,15 @@ int main()
             int fn = PQfnumber(res.get(), col);
             char* val = PQgetvalue(res.get(), 0, fn);
             auto n = read_numeric(val);
-            echo(col, n);
+
+            // make a decimal value
+            std::string scoeff;
+            scoeff.reserve(n.digits.size());
+            std::for_each(n.digits.cbegin(), n.digits.cend(), [&scoeff](short c) { scoeff += std::to_string(c); });
+            long long const coeff = std::stoll(scoeff);
+            double const value = std::pow(-1.0, n.sign) * coeff * std::pow(10, n.exp);
+
+            echo(col, n, value);
         });
 
         return EXIT_SUCCESS;
