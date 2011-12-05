@@ -5,12 +5,18 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //
 #include <libpq-fe.h>
+#include <cassert>
 #include <algorithm>
+#include <array>
 #include <functional>
 #include <iostream>
+#include <iterator>
 #include <memory>
 #include <stdexcept>
+#include <string>
 #include <vector>
+// Windows
+#include <float.h>
 #include <winsock2.h> // ntohs
 typedef std::unique_ptr<PGconn, std::function<void(PGconn*)>> connection_t;
 typedef std::unique_ptr<PGresult, std::function<void(PGresult*)>> result_t;
@@ -33,208 +39,162 @@ result_t exec(connection_t& conn, std::string sql, bool binary = true)
 
 struct numeric
 {
-    enum 
+    enum sign_mode
     {
-        NBase = 10000,
-        HalfNBase =5000,
-        Positive = 0x0000,
-        Negative = 0x4000,
+        positive = 0x0000,
+        negative = 0x4000,
         NaN = 0xC000,
-        Null =  0xF000,
-        MaxPrevision = 1000,
-        MinScale = 0,
-        MaxScale = MaxPrevision,
-        MinSigDgits = 16,
-        DecimalDigits = 4
+        null =  0xF000
     };
 
-    int weight;
-    int sign;
-    int display_scale;
+    enum precision_range
+    {
+        max_precision = 1000,
+        min_scale = 0,
+        max_scale = max_precision,
+    };
+
     std::vector<short> digits;
+    sign_mode sign;
+    int exp;
 };
+
+double floor_div(double dividend, double divisor)
+{
+    if (divisor == 0.0)
+        throw std::invalid_argument("division by zero");
+
+    double mod = fmod(dividend, divisor);
+
+    // In float-point arithmetic, dividend - mod is an approximation.
+    // Thus after division the div may not be an exact integral value, although
+    // it will always be very close to one.
+    double div = (dividend - mod) / divisor;
+    if (mod != 0)
+    {
+        // Ensure the remainder has the same sign as the denominator.
+        if ((divisor < 0) != (mod < 0))
+        {
+            mod += divisor;
+            div -= 1.0;
+        }
+    }
+    else
+    {
+        // The remainder is zero, ensure it has the same sign as the denominator.
+        mod = _copysign(0.0, divisor);
+    }
+
+    // Floor quotient to nearest integral value.
+    double quotient(0);
+    if (div)
+    {
+        quotient = floor(div);
+        if (div - quotient > 0.5)
+            quotient += 1.0;
+    }
+    else
+    {
+        // Division result is zero - get the same sign as the true quotient */
+        quotient = _copysign(0.0, dividend / divisor);
+    }
+
+    return quotient;
+}
 
 numeric read_numeric(char* val)
 {
-    numeric n;
+    enum { decimal_digits_per_nbase = 4 }; // decimal digits per word
 
     short* s = reinterpret_cast<short*>(val);
-    int const ndigits = ntohs(*s); s++;
-    n.weight = ntohs(*s); s++;
-    n.sign = ntohs(*s); s++;
-    n.display_scale = ntohs(*s); s++;
+    u_short const words_count = ntohs(*s); s++;
+    signed short first_word_weight = ntohs(*s); s++;
+    u_short const sign = ntohs(*s); s++;
+    u_short display_scale = ntohs(*s); s++;
+    assert(display_scale >= 0);
+    std::clog << "X: nwords=" << words_count << " weight=" << first_word_weight << " sign=" << sign << " dscale=" << display_scale << std::endl;
+    
+    numeric n;
 
-    n.digits.resize(ndigits);
-    for (auto i = 0U; i < n.digits.size(); ++i)
+    if (sign == numeric::positive)
+        n.sign = numeric::positive;
+    else if (sign == numeric::negative)
+        n.sign = numeric::negative;
+    else if (sign == numeric::NaN)
     {
-        n.digits[i] = ntohs(*s);
-        s++;
+        n.sign = numeric::NaN;
+        return n;
     }
+    else
+    {
+        throw std::invalid_argument("invalid sign");
+    }
+
+    std::vector<short> digits;
+    int exp = 0;
+    if (words_count == 0)
+    {
+        exp = -display_scale;
+        digits.push_back(0);
+    }
+    else
+    {
+        assert(words_count > 0);
+        std::vector<short> words(words_count);
+        for (auto i = 0U; i < words_count; ++i)
+        {
+            words[i] = ntohs(*s);
+            s++;
+        }
+
+        std::array<short, 4> const shifts = { 1000, 100, 10, 1 };
+        for(auto it(words.cbegin()); it != words.cend(); ++it)
+        {
+            for (auto sit(shifts.cbegin()); sit < shifts.cend(); ++sit)
+            {
+                short const& word = *it;
+                short const& shift = *sit;
+                double const fd  = floor_div(word, shift);
+                short digit = static_cast<int>(fd) % 10;
+                if (!digits.empty() || digit != 0)
+                    digits.push_back(digit);
+            }
+        }
+
+        // There are weight + 1 digits before the decimal point.
+        exp = (first_word_weight + 1 - words_count) * decimal_digits_per_nbase;
+        if (0 < exp && exp < 20)
+        {
+            std::fill_n(std::back_inserter(digits), exp, 0);
+            exp = 0;
+        }
+
+        if (display_scale > 0)
+        {
+            int const zerofill = display_scale + exp;
+            if (zerofill < 0)
+            {
+                auto last = digits.cbegin() + (digits.size() + zerofill);
+                digits.erase(last, digits.cend());
+                exp -= zerofill;
+            }
+            else if (zerofill > 0)
+            {
+                std::fill_n(std::back_inserter(digits), zerofill, 0);
+                exp -= zerofill;
+            }
+        }
+    }
+
+    n.digits = digits;
+    n.exp = exp;
     return n;
 }
 
-static const int round_powers[4] = {0, 1000, 100, 10};
-
-void round_var(numeric& var, int rscale)
+void echo(std::string col, numeric const& n)
 {
-	short *digits = &var.digits[0];
-	int			ndigits;
-    int carry;
-	var.display_scale = rscale;
-
-	// decimal digits wanted
-	int di = (var.weight + 1) * numeric::DecimalDigits + rscale;
-
-	// If di = 0, the value loses all digits, but could round up to 1 if its
-	// first extra digit is >= 5.  If di < 0 the result must be 0.
-	if (di < 0)
-	{
-        var.digits.resize(0);
-		var.weight = 0;
-        var.sign = numeric::Positive;
-	}
-	else
-	{
-		/* NBASE digits wanted */
-		ndigits = (di + numeric::DecimalDigits - 1) / numeric::DecimalDigits;
-
-		/* 0, or number of decimal digits to keep in last NBASE digit */
-		di %= numeric::DecimalDigits;
-
-        if (ndigits < var.digits.size() ||
-			(ndigits == var.digits.size() && di > 0))
-		{
-			//var->ndigits = ndigits;
-
-			if (di == 0)
-                carry = (digits[ndigits] >= numeric::HalfNBase) ? 1 : 0;
-			else
-			{
-				/* Must round within last NBASE digit */
-				int			extra,
-							pow10;
-
-				pow10 = round_powers[di];
-				extra = digits[--ndigits] % pow10;
-				digits[ndigits] = digits[ndigits] - (short) extra;
-				carry = 0;
-				if (extra >= pow10 / 2)
-				{
-					pow10 += digits[ndigits];
-                    if (pow10 >= numeric::NBase)
-					{
-						pow10 -= numeric::NBase;
-						carry = 1;
-					}
-					digits[ndigits] = (short) pow10;
-				}
-			}
-
-			// Propagate carry if needed
-			while (carry)
-			{
-				carry += digits[--ndigits];
-				if (carry >= numeric::NBase)
-				{
-					digits[ndigits] = (short) (carry - numeric::NBase);
-					carry = 1;
-				}
-				else
-				{
-					digits[ndigits] = (short) carry;
-					carry = 0;
-				}
-			}
-
-			if (ndigits < 0)
-			{
-				//var.digits--;
-				//var.ndigits++;
-				var.weight++;
-			}
-		}
-	}
-}
-
-std::string get_str_from_numeric(numeric& var, int display_scale)
-{
-    std::string str;
-    if (var.sign == numeric::NaN)
-	{
-		str = "NaN";
-		return str;
-	}
-
-	// Check if we must round up before printing the value and do so.
-    int ndigits = var.digits.size();
-
-    round_var(var, display_scale);
-	int i = display_scale + var.weight + 1;
- //   if (i >= 0 && ndigits > i)
-	//{
-	//	int carry = (var.digits[i] > 4) ? 1 : 0;
- //       ndigits = i;
-
-	//	while (carry)
-	//	{
-	//		carry += var.digits[--i];
-	//		var.digits[i] = carry % 10;
-	//		carry /= 10;
-	//	}
-
-	//	if (i < 0)
-	//	{
-	//		// XXX var.digits--;
-	//		ndigits++;
-	//		var.weight++;
-	//	}
-	//}
-	//else
- //   {
-	//	ndigits = (std::max)(0, (std::min)(i, ndigits));
- //   }
-
-	// Allocate space for the result
-	str.resize((std::max)(0, display_scale) + (std::max)(0, var.weight) + 4);
-
-	// Output a dash for negative values
-    auto cp = str.begin();
-    if (var.sign == numeric::Negative)
-		*cp++ = '-';
-
-	// Output all digits before the decimal point
-	i = (std::max)(var.weight, 0);
-	int d = 0;
-	while (i >= 0)
-	{
-		if (i <= var.weight && d < ndigits)
-			*cp++ = var.digits[d++] + '0';
-		else
-			*cp++ = '0';
-		i--;
-	}
-
-	// If requested, output a decimal point and all the digits that follow it.
-	if (display_scale > 0)
-	{
-		*cp++ = '.';
-		while (i >= -display_scale)
-		{
-			if (i <= var.weight && d < ndigits)
-				*cp++ = var.digits[d++] + '0';
-			else
-				*cp++ = '0';
-			i--;
-		}
-	}
-
-	return str;
-}
-
-template <typename T>
-void echo(T const& t)
-{
-    std::for_each(t.cbegin(), t.cend(), [](short d) { std::cout << d; });
+    std::cout << col << ":\tsign=" << n.sign << "\texp=" << n.exp << "\tdigits=";
+    std::for_each(n.digits.cbegin(), n.digits.cend(), [](short d) { std::cout << d; });
     std::cout << std::endl;
 }
 
@@ -244,22 +204,18 @@ int main()
     {
         std::string conninfo = "dbname=mloskot user=mloskot";
         connection_t conn = connect(conninfo);
+        result_t res = exec(conn, "SELECT dec, num, num20, num202, num63, num05, numneg20, numneg202, numneg63, numneg05 FROM test_data_types LIMIT 1");
 
-        // num20 => NUMERIC(20, 0)
-        // num202 => NUMERIC(20, 2)
-        result_t res = exec(conn, "SELECT num20, num202 FROM test_data_types LIMIT 1");
+        std::array<char const*, 10> cols = 
+        { "dec", "num", "num20", "num202", "num63", "num05", "numneg20", "numneg202", "numneg63", "numneg05" };
 
-        int fn = PQfnumber(res.get(), "num20");
-        char* val = PQgetvalue(res.get(), 0, fn);
-        auto num20 = read_numeric(val);
-
-        fn = PQfnumber(res.get(), "num202");
-        val = PQgetvalue(res.get(), 0, fn);
-        auto num202 = read_numeric(val);
-
-        // TODO: write digits to string repr, handle all properties
-        //std::string snum20 = get_str_from_numeric(num20, num20.display_scale);
-        std::string snum202 = get_str_from_numeric(num202, num202.display_scale);
+        std::for_each(cols.cbegin(), cols.cend(), [&res](char const* col)
+        {
+            int fn = PQfnumber(res.get(), col);
+            char* val = PQgetvalue(res.get(), 0, fn);
+            auto n = read_numeric(val);
+            echo(col, n);
+        });
 
         return EXIT_SUCCESS;
 
