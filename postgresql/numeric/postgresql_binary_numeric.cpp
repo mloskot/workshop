@@ -4,38 +4,17 @@
 // (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
 //
-#include <libpq-fe.h>
+#include <tinypq.hpp>
+
 #include <cassert>
 #include <algorithm>
 #include <array>
-#include <functional>
 #include <iostream>
 #include <iterator>
-#include <memory>
-#include <stdexcept>
-#include <string>
 #include <vector>
 // Windows
 #include <float.h>
 #include <winsock2.h> // ntohs
-typedef std::unique_ptr<PGconn, std::function<void(PGconn*)>> connection_t;
-typedef std::unique_ptr<PGresult, std::function<void(PGresult*)>> result_t;
-
-connection_t connect(std::string info)
-{
-    connection_t conn(PQconnectdb(info.c_str()), [](PGconn* c) { PQfinish(c); });
-    if (PQstatus(conn.get()) != CONNECTION_OK)
-        throw std::runtime_error("no connection");
-    return conn;
-}
-
-result_t exec(connection_t& conn, std::string sql, bool binary = true)
-{
-    result_t res(PQexecParams(conn.get(), sql.c_str(), 0, 0, 0, 0, 0, binary ? 1 : 0), [](PGresult* r) { PQclear(r); });
-    if (!(PQresultStatus(res.get()) == PGRES_TUPLES_OK || PQresultStatus(res.get()) == PGRES_COMMAND_OK))
-        throw std::runtime_error(PQerrorMessage(conn.get()));
-    return res;
-}
 
 struct numeric
 {
@@ -209,19 +188,18 @@ void echo(std::string col, numeric const& n, T value)
 
 int main()
 {
-    try
+        try
     {
         std::string conninfo = "dbname=mloskot user=mloskot";
-        connection_t conn = connect(conninfo);
-        result_t res = exec(conn, "SELECT dec, num, num20, num202, num63, num05, numneg20, numneg202, numneg63, numneg05 FROM test_data_types LIMIT 1");
+        auto qconn = tinypq::connect(conninfo);
+        auto qres = tinypq::execute(qconn, "SELECT dec, num, num20, num202, num63, num05, numneg20, numneg202, numneg63, numneg05 FROM test_data_types LIMIT 1");
 
         std::array<char const*, 10> cols = 
         { "dec", "num", "num20", "num202", "num63", "num05", "numneg20", "numneg202", "numneg63", "numneg05" };
 
-        std::for_each(cols.cbegin(), cols.cend(), [&res](char const* col)
+        std::for_each(cols.cbegin(), cols.cend(), [&qres](char const* col)
         {
-            int fn = PQfnumber(res.get(), col);
-            char* val = PQgetvalue(res.get(), 0, fn);
+            char* val = tinypq::fetch(qres, 0, col);
             auto n = read_numeric(val);
 
             // make a decimal value
