@@ -27,38 +27,87 @@ namespace tinypq
 typedef std::unique_ptr<PGconn, std::function<void(PGconn*)>> connection;
 typedef std::unique_ptr<PGresult, std::function<void(PGresult*)>> result;
 
+namespace detail
+{
+    connection make_connection(PGconn* pgconn)
+    {
+        connection conn(pgconn, [](PGconn* c) { ::PQfinish(c); });
+        return conn;
+    }
+
+    result make_result(PGresult* pgres)
+    {
+        result res(pgres, [](PGresult* r) { ::PQclear(r); });
+        return res;
+    }
+} // namespace detail
+
 void require_connection(connection const& conn)
 {
-    if (PQstatus(conn.get()) != CONNECTION_OK)
+    if (!conn || PQstatus(conn.get()) != CONNECTION_OK)
         throw std::runtime_error("no connection");
+}
+
+void require_result(result const& res)
+{
+    if (!res)
+        throw std::runtime_error("no result");
 }
 
 void require_tuples(result const& res)
 {
+    require_result(res);
     if (PQresultStatus(res.get()) != PGRES_TUPLES_OK)
         throw std::runtime_error("no tuples");
 }
+
+int status(connection const& conn)
+{
+    require_connection(conn);
+    return PQstatus(conn.get());
+}
+
+int status(result const& res)
+{
+    require_result(res);
+    return PQresultStatus(res.get());
+}
+
 connection connect(std::string info)
 {
-    connection conn(PQconnectdb(info.c_str()), [](PGconn* c) { PQfinish(c); });
-
-    if (PQstatus(conn.get()) != CONNECTION_OK)
-        throw std::runtime_error("no connection");
-
+    connection conn = detail::make_connection(PQconnectdb(info.c_str()));
+    if (status(conn) != CONNECTION_OK)
+    {
+        char const* msg = PQerrorMessage(conn.get());
+        throw std::runtime_error(std::string(msg));
+    }
     return conn;
 }
 
-result execute(connection const& conn, std::string sql, bool binary = true)
+result command(connection const& conn, std::string sql)
+{
+    require_connection(conn);
+    result res = detail::make_result(PQexec(conn.get(), sql.c_str()));
+    if (status(res) != PGRES_COMMAND_OK)
+    {
+        char const* msg = PQresultErrorMessage(res.get());
+        throw std::runtime_error(std::string(msg));
+    }
+    return res;
+}
+
+result query(connection const& conn, std::string sql, bool binary = true)
 {
     require_connection(conn);
 
     int const fmt = binary ? 1 : 0;
-    result res(PQexecParams(conn.get(), sql.c_str(), 0, 0, 0, 0, 0, fmt), 
-        [](PGresult* r) { PQclear(r); });
+    result res = detail::make_result(PQexecParams(conn.get(), sql.c_str(), 0, 0, 0, 0, 0, fmt));
 
-    if (!(PQresultStatus(res.get()) == PGRES_TUPLES_OK || PQresultStatus(res.get()) == PGRES_COMMAND_OK))
-        throw std::runtime_error(PQerrorMessage(conn.get()));
-
+    if (!(status(res) == PGRES_TUPLES_OK || status(res) == PGRES_COMMAND_OK))
+    {
+        char const* msg = PQresultErrorMessage(res.get());
+        throw std::runtime_error(std::string(msg));
+    }
     return res;
 }
 

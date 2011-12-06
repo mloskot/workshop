@@ -188,15 +188,17 @@ void echo(std::string col, numeric const& n, T value)
 
 int main()
 {
-        try
+    try
     {
         std::string conninfo = "dbname=mloskot user=mloskot";
         auto qconn = tinypq::connect(conninfo);
-        auto qres = tinypq::execute(qconn, "SELECT dec, num, num20, num202, num63, num05, numneg20, numneg202, numneg63, numneg05 FROM test_data_types LIMIT 1");
 
-        std::array<char const*, 10> cols = 
-        { "dec", "num", "num20", "num202", "num63", "num05", "numneg20", "numneg202", "numneg63", "numneg05" };
-
+        tinypq::command(qconn, "DROP TABLE IF EXISTS testn CASCADE");
+        tinypq::command(qconn, "CREATE TABLE testn (n1 NUMERIC, n2 NUMERIC(10, 10), n3 NUMERIC(10, 5), n4 NUMERIC(10, 0))");
+        tinypq::command(qconn, "INSERT INTO testn (n1, n2, n3, n4) VALUES (random()::NUMERIC*1000, random(), random()::NUMERIC*1000, 1230456078)");
+        
+        auto qres = tinypq::query(qconn, "SELECT n1, n2, n3, n4 FROM testn LIMIT 1");
+        std::array<char const*, 4> cols =  { "n1", "n2", "n3", "n4" };
         std::for_each(cols.cbegin(), cols.cend(), [&qres](char const* col)
         {
             char* val = tinypq::fetch(qres, 0, col);
