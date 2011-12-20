@@ -22,6 +22,9 @@
 
 int main()
 {
+    wchar_t* PYTHONHOME = L"c:\\Python32_d";
+    Py_SetPythonHome(PYTHONHOME);
+
     if (!Py_IsInitialized())
         Py_Initialize(); //Py_InitializeEx(0);
 
@@ -29,6 +32,7 @@ int main()
     // Python supports the creation of additional interpreters (using Py_NewInterpreter()),
     // but mixing multiple interpreters and the PyGILState_*() API is unsupported.
     assert(0 == PyEval_ThreadsInitialized());
+    PyRun_SimpleString("import dummy_threading"); // indicates limitations
 
     PyThreadState* interp_main = PyThreadState_Get();
     PyThreadState* interp_sub1 = Py_NewInterpreter(); // this thread state is made in current (implicit swap)
