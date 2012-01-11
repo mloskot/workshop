@@ -19,4 +19,12 @@ if(MSVC)
   add_definitions(-D_SCL_SECURE_NO_DEPRECATE)
 endif()
 
+set(MY_PYTHON_LIBRARIES ${PYTHON_LIBRARIES})
+if (PYTHON_DEBUG_LIBRARIES)
+  set(MY_PYTHON_LIBRARIES ${PYTHON_DEBUG_LIBRARIES})
+endif()
+
+add_executable(faq_incomplete_input faq_incomplete_input.cpp)
+target_link_libraries(faq_incomplete_input ${MY_PYTHON_LIBRARIES})
+
 add_subdirectory(emb)
