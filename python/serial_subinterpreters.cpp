@@ -13,7 +13,7 @@
 // * No Python threads
 // * No non-Python threads
 
-#ifdef WITH_VISUALLEAKDETECTOR
+#ifdef WITH_VISUAL_LEAK_DETECTOR
 #include <vld.h> // Py_InitializeEx gives hundreds of leaks
 #endif
 #include <cassert>
