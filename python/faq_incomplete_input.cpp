@@ -9,12 +9,23 @@
 // The "incomplete input" solution presented in the FAQ is incomplete and it does
 // not allow multi-line scripts with more than 2 lines of flow control statements:
 //
-//for n in range(0, 5):
-//        if n > 0:
+//>>> n = 10
+//>>> if n > 0:
+//...     if n < 100:
 //  File "<stdin>", line 2
-//    if n > 0:
-//            ^
+//    if n < 100:
+//              ^
 //IndentationError: expected an indented block
+//>>>
+//
+//>>> n = 10
+//>>> if n > 0:
+//...     if n < 100:
+//  File "<stdin>", line 2
+//    if n < 100:
+//              ^
+//IndentationError: expected an indented block
+//>>>
 //
 #include <cstdio>
 #include <iostream>
@@ -92,10 +103,15 @@ int main (int argc, char* argv[])
             }                                        /* syntax error or E_EOF? */
             else if (PyErr_ExceptionMatches (PyExc_SyntaxError))
             {
+                // mloskot also proposes FIX 1 (above): 
+                // || PyErr_ExceptionMatches (PyExc_IndentationError)
+
+                // mloskot also proposes FIX 2 (below):
+                // ||  strcmp (msg, "expected an indented block") && ps2  == prompt 
+
                 PyErr_Fetch (&exc, &val, &trb);        /* clears exception! */
 
-                if (PyArg_ParseTuple (val, "sO", &msg, &obj) &&
-                    !strcmp (msg, "unexpected EOF while parsing")) /* E_EOF */
+                if (PyArg_ParseTuple (val, "sO", &msg, &obj) && 0 == strcmp (msg, "unexpected EOF while parsing")) /* E_EOF */
                 {
                     Py_XDECREF (exc);
                     Py_XDECREF (val);
