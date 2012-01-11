@@ -18,12 +18,11 @@
 //IndentationError: expected an indented block
 //>>>
 //
-//>>> n = 10
-//>>> if n > 0:
-//...     if n < 100:
+//>>> for n in range(0, 5):
+//...     if n > 2:
 //  File "<stdin>", line 2
-//    if n < 100:
-//              ^
+//    if n > 2:
+//            ^
 //IndentationError: expected an indented block
 //>>>
 //
