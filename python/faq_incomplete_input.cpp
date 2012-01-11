@@ -1,3 +1,5 @@
+// Posted to python-list
+// http://mail.python.org/pipermail/python-list/2012-January/1286379.html
 //
 // A quick and dirty C++ version of the C program presented in Python FAQ:
 // http://docs.python.org/py3k/faq/extending.html#how-do-i-tell-incomplete-input-from-invalid-input
