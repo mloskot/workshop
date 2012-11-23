@@ -1,7 +1,7 @@
-Sandbox with extensions for Boost Generic Image Library (Boost.GIL)
+Variety of tests and examples of use of the PostgreSQL client library (libpq) API.
 
-Boost.GIL source code http://www.boost.org
+Contents:
+* tinypq.hpp - A very tiny C++ wrapper for (subset of) libpq C API
+* numeric/ - testing NUMERIC data type exchange in binary mode
 
-Boost.GIL documentation http://www.boost.org/libs/gil/doc/index.html
-
-Other Boost.GIL extensions http://code.google.com/p/gil-contributions/
+Author: Mateusz Loskot <mateusz@loskot.net>
