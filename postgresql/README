@@ -1,7 +1,8 @@
 Variety of tests and examples of use of the PostgreSQL client library (libpq) API.
 
 Contents:
-* tinypq.hpp - A very tiny C++ wrapper for (subset of) libpq C API
 * numeric/ - testing NUMERIC data type exchange in binary mode
+
+Requires https://github.com/mloskot/tinypq
 
 Author: Mateusz Loskot <mateusz@loskot.net>
