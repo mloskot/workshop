@@ -104,7 +104,7 @@ PyModuleDef embmodule =
 PyObject* g_stdout;
 PyObject* g_stdout_saved;
 
-PyMODINIT_FUNC PyInit_emb(void) 
+PyMODINIT_FUNC PyInit_emb(void)
 {
     g_stdout = 0;
     g_stdout_saved = 0;
@@ -132,7 +132,7 @@ void set_stdout(stdout_write_type write)
 
     Stdout* impl = reinterpret_cast<Stdout*>(g_stdout);
     impl->write = write;
-    PySys_SetObject("stdout", g_stdout);    
+    PySys_SetObject("stdout", g_stdout);
 }
 
 void reset_stdout()
