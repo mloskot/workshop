@@ -100,7 +100,7 @@ while (<>)
     elsif ($in eq 'compile')
     {
         # Do interesting things if make is compiling something.
-        if (($thisline !~ /[,:]$/) && ($thisline !~ /warning/))
+        if (($thisline !~ /[,:]$/) && ($thisline !~ /warning/) && ($thisline !~ /note/))
         {
             $thisline =~ s/(\d+:\s+)/$1$col_default$col_error/;
             $thisline = $error_highlight . $thisline . $col_norm;
