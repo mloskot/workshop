@@ -1,4 +1,0 @@
-#!/bin/bash
-b2colorizer="$(dirname $(realpath $0))/colorbb.pl"
-b2 "$@" 2>&1 | perl $b2colorizer
-exit ${PIPESTATUS[0]}
