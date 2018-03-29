@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# colorbb.pl 0.1
+# colorbb.pl 0.2
 #
 # Copyright: (C) 2009, Mateusz Loskot <mateusz@loskot.net>
 #
@@ -8,7 +8,7 @@
 #
 # Copyright: (C) 1999, Bjarni R. Einarsson <bre@netverjar.is>
 #                      http://bre.klaki.net/
-# 
+#
 #   This program is free software; you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
 #   the Free Software Foundation; either version 2 of the License, or
@@ -23,19 +23,18 @@
 #   along with this program; if not, write to the Free Software
 #   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-#
 # Some useful color codes, see end of file for more.
-#
-$col_ltgray =       "\033[37m";
-$col_purple =       "\033[35m";
-$col_green =        "\033[32m";
-$col_cyan =         "\033[36m";
-$col_brown =        "\033[33m";
-$col_norm =         "\033[00m";
 $col_background =   "\033[07m";
-$col_brighten =     "\033[01m";
-$col_underline =    "\033[04m";
 $col_blink =        "\033[05m";
+$col_brighten =     "\033[01m";
+$col_brown =        "\033[33m";
+$col_cyan =         "\033[36m";
+$col_green =        "\033[32m";
+$col_ltgray =       "\033[37m";
+$col_norm =         "\033[00m";
+$col_purple =       "\033[35m";
+$col_red =          "\033[31m";
+$col_underline =    "\033[04m";
 
 # Customize colors here...
 #
@@ -49,7 +48,7 @@ $col_linenum =      $col_cyan;
 $col_trace =        $col_brown;
 $col_warning =      $col_green;
 $tag_error =        "";
-$col_error =        $tag_error . $col_brown . $col_brighten;
+$col_error =        $tag_error . $col_red . $col_brighten;
 $error_highlight =  $col_brighten;
 
 # Get size of terminal
@@ -63,30 +62,34 @@ $| = 1;
 while (<>)
 {
     $orgline = $thisline = $_;
-    
+
     # Remove multiple spaces
     $thisline =~ s/  \+/ /g;
 
     # Truncate lines.
     # I suppose this is bad, but it's better than what less does!
-    if ($cols >= 0) 
+    if ($cols >= 0)
     {
         $thisline =~ s/^(.{$cols}).....*(.{15})$/$1 .. $2/;
     }
 
-    if ($thisline =~ s/^(.*(compile).*)$/$col_compile$1$col_norm/) 
+    if ($thisline =~ s/^(.+(failed\s).*)$/$col_error$1$col_norm/)
+    {
+        $in = $1;
+    }
+    elsif ($thisline =~ s/^(.*(compile).*)$/$col_compile$1$col_norm/)
     {
         $in = 'compile';
     }
-    elsif ($thisline =~ s/^(.*(link).*)$/$col_link$1$col_norm/) 
+    elsif ($thisline =~ s/^(.*(\blink).*)$/$col_link$1$col_norm/)
     {
         $in = 'link';
     }
-    elsif ($thisline =~ s/^(.*(testing).*)$/$col_test$1$col_norm/) 
+    elsif ($thisline =~ s/^(.*(testing).*)$/$col_test$1$col_norm/)
     {
         $in = 'test';
     }
-    elsif ($thisline =~ s/^(.*(skipped).*)$/$col_bjam$1$col_norm/) 
+    elsif ($thisline =~ s/^(.*(skipped).*)$/$col_bjam$1$col_norm/)
     {
         $in = 'bjam';
     }
@@ -107,9 +110,9 @@ while (<>)
             # warning
             $thisline =~ s|(warning:\s+)(.*)$|$1$col_warning$2|;
         }
-        
+
         # In file included from main.cpp:38:
-        # main.cpp: In function int main(...)': 
+        # main.cpp: In function int main(...)':
         $thisline =~ s/(In f(unction|ile))/$col_trace$1/x;
 
         # /blah/blah/blah.cpp:123:
@@ -126,12 +129,12 @@ while (<>)
 
         $in = 'unknown';
     }
-    
-    if ($thisline !~ /^\s+/) 
+
+    if ($thisline !~ /^\s+/)
     {
         print $col_norm, $col_default;
-    }   
-    print $thisline;    
+    }
+    print $thisline;
 }
 
 print $col_norm;

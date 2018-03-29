@@ -1,13 +1,4 @@
 #!/bin/bash
-#
-# Wrapper around bjam, to colorize it's output and pipe through less.
-# Jumps to the first error that occurs during the build process.
-#
-# BEGIN OF CONFIGURATION 
-# Update settings below if necessary:
-COLORBB="/home/mloskot/dev/mloskot/_git/workshop/scripts/colorbb/colorbb.pl"
-BJAM=`which bjam`
-# END OF CONFIGURATION
-
-${BJAM} "$@" 2>&1 | ${COLORBB}
+b2colorizer="$(dirname $(realpath $0))/colorbb.pl"
+b2 "$@" 2>&1 | perl $b2colorizer
 exit ${PIPESTATUS[0]}
